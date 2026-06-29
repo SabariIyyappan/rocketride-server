@@ -1,0 +1,80 @@
+name: Lock node deps (constraints)
+
+# PROTOTYPE / discussion artifact for the "ship a CI-built constraints lockfile"
+# proposal (engine issue: pin node deps once in CI instead of re-solving at
+# depends() time on every machine).
+#
+# Today: depends() -> ensure_constraints() runs `uv pip compile` over all
+#   ~93 nodes/src/nodes/**/requirements.txt into <cache>/constraints.txt at
+#   install time, PER MACHINE, and the result is never committed. So it can
+#   drift between runs/platforms (the Windows cryptography _rust.pyd flap was
+#   exactly that).
+#
+# This job runs that same compile ONCE, with `--universal` so the result is
+# valid across Linux + Windows + macOS, and publishes the lockfile. Two things
+# to look at when this runs:
+#   1. The resolved lockfile itself (the artifact) — the "versions we know work".
+#   2. Whether the cross-node solve SUCCEEDS. A hard conflict (e.g. two nodes
+#      pinning incompatible versions of a shared lib) fails HERE, at CI time,
+#      instead of bricking a user's first run.
+#
+# Consumption side (engine follow-up, intentionally NOT in this prototype):
+#   the build + depends() would install with `-c <committed constraints.lock>`
+#   and skip the per-machine recompute; the production version of this job
+#   commits the lockfile (PR/auto-commit) rather than only uploading it.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  lock:
+    name: Compile universal constraints
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Compile universal lockfile from all node requirements
+        run: |
+          set -euo pipefail
+          mapfile -t REQS < <(find nodes/src/nodes -name requirements.txt | sort)
+          echo "Resolving ${#REQS[@]} node requirements into one universal lockfile..."
+          printf '  %s\n' "${REQS[@]}"
+          # --universal: one lockfile valid for all platforms (covers the
+          #   Windows-vs-Linux wheel split that bit us with cryptography).
+          # --no-header: keep the diff stable across runs.
+          uv pip compile --universal --no-header \
+            --output-file nodes/src/nodes/constraints.lock \
+            "${REQS[@]}"
+          echo "::group::resolved constraints.lock (first 60 lines)"
+          head -60 nodes/src/nodes/constraints.lock
+          echo "::endgroup::"
+          echo "Total pinned packages: $(grep -cE '^[a-zA-Z0-9].*==' nodes/src/nodes/constraints.lock)"
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Node dependency lockfile"
+            echo "- Inputs: \`$(find nodes/src/nodes -name requirements.txt | wc -l)\` node requirements.txt"
+            if [ -f nodes/src/nodes/constraints.lock ]; then
+              echo "- Resolved: \`$(grep -cE '^[a-zA-Z0-9].*==' nodes/src/nodes/constraints.lock)\` pinned packages (universal)"
+              echo "- :white_check_mark: cross-node solve succeeded"
+            else
+              echo "- :x: solve failed — a cross-node version conflict surfaced (see the step log). This is the conflict that would otherwise brick a user's first \`depends()\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload lockfile artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-constraints-lock
+          path: nodes/src/nodes/constraints.lock
+          if-no-files-found: error
