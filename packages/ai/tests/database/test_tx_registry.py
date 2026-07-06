@@ -91,10 +91,47 @@ def test_reap_idle_rolls_back():
         reg.execute(sid, 'SELECT 1')
 
 
+def test_reaper_skips_in_flight_session():
+    """The idle reaper must not drop a session whose per-session lock is held."""
+    t = {'now': 0.0}
+    reg = TransactionRegistry(
+        _engine_shared(),
+        idle_timeout=10,
+        max_rows=1000,
+        clock=lambda: t['now'],
+    )
+    sid = reg.begin()
+    held = reg._sessions[sid]
+    t['now'] = 100.0  # session is now past the idle timeout
+    # Simulate an in-flight execute by holding the session lock.
+    held.lock.acquire()
+    try:
+        assert reg.reap_idle() == 0  # skipped, not blocked on
+        assert sid in reg._sessions
+    finally:
+        held.lock.release()
+    # Once free, the same idle session is reaped.
+    assert reg.reap_idle() == 1
+    assert sid not in reg._sessions
+
+
 def test_to_sqlalchemy_text_maps_placeholders():
     clause, binds = to_sqlalchemy_text('INSERT INTO t (a,b) VALUES ($1,$2)', ['p', 7])
     assert binds == {'b1': 'p', 'b2': 7}
     assert ':b1' in str(clause) and ':b2' in str(clause)
+
+    # Multi-digit placeholders ($1..$11) must each map to their own bind and not
+    # collapse $1 into $10/$11 (greedy \\d+ handles this — regression guard).
+    params = list(range(1, 12))  # 11 values -> $1..$11
+    cols = ', '.join(f'c{i}' for i in range(1, 12))
+    vals = ', '.join(f'${i}' for i in range(1, 12))
+    clause2, binds2 = to_sqlalchemy_text(f'INSERT INTO t ({cols}) VALUES ({vals})', params)
+    assert binds2 == {f'b{i}': i for i in range(1, 12)}
+    rendered = str(clause2)
+    for i in range(1, 12):
+        assert f':b{i}' in rendered
+    # $1 keeps value 1; $10/$11 are distinct binds, not swallowed.
+    assert binds2['b1'] == 1 and binds2['b10'] == 10 and binds2['b11'] == 11
 
 
 def test_begin_conn_leak_on_begin_failure():

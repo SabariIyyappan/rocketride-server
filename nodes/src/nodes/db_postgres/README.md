@@ -88,6 +88,8 @@ Sessions are server-scoped: the `session_id` is only valid on the node instance 
 
 The Python SDK exposes these as `client.database.begin_transaction()`, `client.database.commit()`, and `client.database.rollback()`. The TypeScript SDK exposes them as `client.database.beginTransaction()`, `client.database.commit()`, and `client.database.rollback()`.
 
+To run a statement **inside** an open session from the SDK, pass the `session_id` (and any positional `$1..$n` `params`) to the database query method — Python `client.database.query(token=..., sql=..., session_id=..., params=[...])`, TypeScript `client.database.query({ token, sql, sessionId, params })`. Parameters are bound server-side. A `query(...)` call without a `session_id` runs on a fresh auto-commit connection and is not part of any transaction.
+
 ---
 
 ## SQL safety & validation

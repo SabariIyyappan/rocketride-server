@@ -204,41 +204,45 @@ async function ensureCleanPipeline(client: RocketRideClient, token: string): Pro
 		'rollback: neither row persists after forced rollback',
 		async () => {
 			const sq = client.database.sequelize({ Sequelize, token: pipelineToken, nodeId: DB_NODE_ID });
-
-			interface Row {
-				id: number;
-				label: string;
-			}
-			const M = sq.define<import('sequelize').Model<Row, Omit<Row, 'id'>>>(
-				'RrE2eRow',
-				{
-					id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-					label: DataTypes.TEXT,
-				},
-				{ tableName: TEST_TABLE, timestamps: false }
-			);
-
-			// Snapshot count before any writes.
-			const beforeCount = await M.count();
-
-			// Open a transaction, insert two rows, then force a rollback.
-			let txError: Error | null = null;
 			try {
-				await sq.transaction(async (t: Transaction) => {
-					await M.create({ label: 'row-rollback-1' } as Omit<Row, 'id'>, { transaction: t });
-					await M.create({ label: 'row-rollback-2' } as Omit<Row, 'id'>, { transaction: t });
-					throw new Error('force rollback');
-				});
-			} catch (err) {
-				txError = err as Error;
+				interface Row {
+					id: number;
+					label: string;
+				}
+				const M = sq.define<import('sequelize').Model<Row, Omit<Row, 'id'>>>(
+					'RrE2eRow',
+					{
+						id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+						label: DataTypes.TEXT,
+					},
+					{ tableName: TEST_TABLE, timestamps: false }
+				);
+
+				// Snapshot count before any writes.
+				const beforeCount = await M.count();
+
+				// Open a transaction, insert two rows, then force a rollback.
+				let txError: Error | null = null;
+				try {
+					await sq.transaction(async (t: Transaction) => {
+						await M.create({ label: 'row-rollback-1' } as Omit<Row, 'id'>, { transaction: t });
+						await M.create({ label: 'row-rollback-2' } as Omit<Row, 'id'>, { transaction: t });
+						throw new Error('force rollback');
+					});
+				} catch (err) {
+					txError = err as Error;
+				}
+
+				expect(txError).not.toBeNull();
+				expect(txError!.message).toBe('force rollback');
+
+				// Neither row must be visible via a stateless query.
+				const afterCount = await M.count();
+				expect(afterCount).toBe(beforeCount);
+			} finally {
+				// Release the RocketRide session/connection even if an assertion throws.
+				await sq.close();
 			}
-
-			expect(txError).not.toBeNull();
-			expect(txError!.message).toBe('force rollback');
-
-			// Neither row must be visible via a stateless query.
-			const afterCount = await M.count();
-			expect(afterCount).toBe(beforeCount);
 		},
 		TEST_CONFIG.timeout
 	);
@@ -251,37 +255,41 @@ async function ensureCleanPipeline(client: RocketRideClient, token: string): Pro
 		'commit: both rows persist after committed transaction',
 		async () => {
 			const sq = client.database.sequelize({ Sequelize, token: pipelineToken, nodeId: DB_NODE_ID });
+			try {
+				interface Row {
+					id: number;
+					label: string;
+				}
+				const M = sq.define<import('sequelize').Model<Row, Omit<Row, 'id'>>>(
+					'RrE2eRow',
+					{
+						id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+						label: DataTypes.TEXT,
+					},
+					{ tableName: TEST_TABLE, timestamps: false }
+				);
 
-			interface Row {
-				id: number;
-				label: string;
+				const beforeCount = await M.count();
+
+				// Commit a transaction containing two rows.
+				await sq.transaction(async (t: Transaction) => {
+					await M.create({ label: 'row-commit-1' } as Omit<Row, 'id'>, { transaction: t });
+					await M.create({ label: 'row-commit-2' } as Omit<Row, 'id'>, { transaction: t });
+				});
+
+				// Both rows must now be visible.
+				const afterCount = await M.count();
+				expect(afterCount).toBe(beforeCount + 2);
+
+				// Verify the exact labels persisted.
+				const rows = await M.findAll({ where: { label: ['row-commit-1', 'row-commit-2'] }, order: [['label', 'ASC']] });
+				expect(rows).toHaveLength(2);
+				expect((rows[0] as unknown as Row).label).toBe('row-commit-1');
+				expect((rows[1] as unknown as Row).label).toBe('row-commit-2');
+			} finally {
+				// Release the RocketRide session/connection even if an assertion throws.
+				await sq.close();
 			}
-			const M = sq.define<import('sequelize').Model<Row, Omit<Row, 'id'>>>(
-				'RrE2eRow',
-				{
-					id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-					label: DataTypes.TEXT,
-				},
-				{ tableName: TEST_TABLE, timestamps: false }
-			);
-
-			const beforeCount = await M.count();
-
-			// Commit a transaction containing two rows.
-			await sq.transaction(async (t: Transaction) => {
-				await M.create({ label: 'row-commit-1' } as Omit<Row, 'id'>, { transaction: t });
-				await M.create({ label: 'row-commit-2' } as Omit<Row, 'id'>, { transaction: t });
-			});
-
-			// Both rows must now be visible.
-			const afterCount = await M.count();
-			expect(afterCount).toBe(beforeCount + 2);
-
-			// Verify the exact labels persisted.
-			const rows = await M.findAll({ where: { label: ['row-commit-1', 'row-commit-2'] }, order: [['label', 'ASC']] });
-			expect(rows).toHaveLength(2);
-			expect((rows[0] as unknown as Row).label).toBe('row-commit-1');
-			expect((rows[1] as unknown as Row).label).toBe('row-commit-2');
 		},
 		TEST_CONFIG.timeout
 	);

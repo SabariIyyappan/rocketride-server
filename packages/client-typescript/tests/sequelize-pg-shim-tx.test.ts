@@ -236,4 +236,17 @@ describe('pg-shim transactions', () => {
 		await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
 		expect(c._db.query).toHaveBeenCalledWith({ token: 'tok', sql: 'SET TRANSACTION ISOLATION LEVEL SERIALIZABLE', nodeId: 'n1', sessionId: 's1' });
 	});
+
+	it('ROLLBACK TO SAVEPOINT is a nested rollback: forwarded as a query, session stays open', async () => {
+		const c = ctx();
+		const { Client } = makePgShim(c);
+		const client = new Client({});
+		await client.query('BEGIN');
+		await client.query('ROLLBACK TO SAVEPOINT sp1');
+		// Must be forwarded to db.query, NOT treated as a top-level ROLLBACK.
+		expect(c._db.query).toHaveBeenCalledWith({ token: 'tok', sql: 'ROLLBACK TO SAVEPOINT sp1', nodeId: 'n1', sessionId: 's1' });
+		expect(c._db.rollback).not.toHaveBeenCalled();
+		// The outer transaction is still open.
+		expect((client as any)._sessionId).toBe('s1');
+	});
 });

@@ -69,18 +69,21 @@ describe('DatabaseApi transactions', () => {
 		const c = fakeClient();
 		const db = new DatabaseApi(c);
 		await expect(db.commit({ token: 't', sessionId: '' })).rejects.toThrow('sessionId must be a non-empty string');
+		expect(c.tool).not.toHaveBeenCalled();
 	});
 
 	it('rollback rejects empty sessionId', async () => {
 		const c = fakeClient();
 		const db = new DatabaseApi(c);
 		await expect(db.rollback({ token: 't', sessionId: '' })).rejects.toThrow('sessionId must be a non-empty string');
+		expect(c.tool).not.toHaveBeenCalled();
 	});
 
 	it('beginTransaction rejects empty token', async () => {
 		const c = fakeClient();
 		const db = new DatabaseApi(c);
 		await expect(db.beginTransaction({ token: '' })).rejects.toThrow('token must be a non-empty string');
+		expect(c.tool).not.toHaveBeenCalled();
 	});
 
 	it('commit rejects empty token', async () => {

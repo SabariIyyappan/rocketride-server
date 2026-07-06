@@ -27,7 +27,7 @@ import re
 import time
 import uuid
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy import text
 from sqlalchemy.sql.elements import TextClause
@@ -74,6 +74,8 @@ class _Held:
     conn: object
     trans: object
     last_used: float
+    # Serialises calls on THIS session only; other sessions run concurrently.
+    lock: threading.Lock = field(default_factory=threading.Lock)
 
 
 class TransactionRegistry:
@@ -94,12 +96,12 @@ class TransactionRegistry:
         self._max_rows = max_rows
         self._clock = clock
         self._sessions: dict[str, _Held] = {}
-        self._lock = threading.Lock()
+        self._registry_lock = threading.Lock()  # guards the _sessions dict only
 
     def begin(self) -> str:
         """Checkout a connection, open a transaction, return a new session_id."""
-        with self._lock:
-            self._reap_idle_locked()
+        self.reap_idle()
+        with self._registry_lock:
             if len(self._sessions) >= self._max_sessions:
                 raise RuntimeError('too many open DB transactions; try again later')
             conn = self._engine.connect()
@@ -118,13 +120,14 @@ class TransactionRegistry:
         Note: on a max_rows RuntimeError the session remains open; the caller
         should roll back the transaction before discarding the session_id.
         """
-        # self._lock is intentionally held across the live conn.execute() call:
-        # this serialises concurrent calls on the same node's sessions but
-        # guarantees the idle reaper cannot race an in-flight execute.
-        with self._lock:
-            held = self._sessions.get(session_id)
-            if held is None:
-                raise KeyError(session_id)
+        held = self._require(session_id)
+        # Hold only THIS session's lock across the live conn.execute(): other
+        # sessions on the node run concurrently, and the idle reaper (which uses
+        # a non-blocking acquire) skips a session while it is in-flight.
+        with held.lock:
+            with self._registry_lock:
+                if self._sessions.get(session_id) is not held:
+                    raise KeyError(session_id)  # finalised/reaped while we waited
             clause, binds = to_sqlalchemy_text(sql, params)
             result = held.conn.execute(clause, binds)
             held.last_used = self._clock()
@@ -142,34 +145,58 @@ class TransactionRegistry:
         self._finalize(session_id, commit=False)
 
     def reap_idle(self) -> int:
-        """Rollback+close sessions idle past idle_timeout; return count reaped."""
-        with self._lock:
-            return self._reap_idle_locked()
+        """Rollback+close sessions idle past idle_timeout; return count reaped.
+
+        Sessions that are in-flight (their per-session lock is currently held by
+        an execute/commit/rollback) are skipped, not blocked on.
+        """
+        now = self._clock()
+        with self._registry_lock:
+            candidates = [(sid, h) for sid, h in self._sessions.items() if now - h.last_used > self._idle_timeout]
+        reaped = 0
+        for sid, held in candidates:
+            if not held.lock.acquire(blocking=False):
+                continue  # in-flight; leave it for a later sweep
+            try:
+                if self._drop(sid, held, commit=False):
+                    reaped += 1
+            finally:
+                held.lock.release()
+        return reaped
 
     def close_all(self) -> None:
         """Rollback+close every session (for endGlobal)."""
-        with self._lock:
-            for sid in list(self._sessions):
-                self._drop_locked(sid, commit=False)
+        with self._registry_lock:
+            items = list(self._sessions.items())
+        for sid, held in items:
+            with held.lock:
+                self._drop(sid, held, commit=False)
+
+    def _require(self, session_id: str) -> _Held:
+        with self._registry_lock:
+            held = self._sessions.get(session_id)
+            if held is None:
+                raise KeyError(session_id)
+            return held
 
     def _finalize(self, session_id: str, *, commit: bool) -> None:
-        with self._lock:
-            if session_id not in self._sessions:
+        held = self._require(session_id)
+        with held.lock:
+            if not self._drop(session_id, held, commit=commit):
                 raise KeyError(session_id)
-            self._drop_locked(session_id, commit=commit)
 
-    def _reap_idle_locked(self) -> int:
-        now = self._clock()
-        stale = [sid for sid, h in self._sessions.items() if now - h.last_used > self._idle_timeout]
-        for sid in stale:
-            self._drop_locked(sid, commit=False)
-        return len(stale)
+    def _drop(self, session_id: str, held: _Held, *, commit: bool) -> bool:
+        """Remove the session from the registry and finalise its transaction.
 
-    def _drop_locked(self, session_id: str, *, commit: bool) -> None:
-        held = self._sessions.pop(session_id, None)
-        if held is None:
-            return
+        Caller MUST hold ``held.lock``. Returns False if the session was already
+        removed by a concurrent finalise/reap.
+        """
+        with self._registry_lock:
+            if self._sessions.get(session_id) is not held:
+                return False
+            del self._sessions[session_id]
         try:
             held.trans.commit() if commit else held.trans.rollback()
         finally:
             held.conn.close()
+        return True

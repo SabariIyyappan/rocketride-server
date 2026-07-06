@@ -162,6 +162,12 @@ def test_rollback_discards_row(instance_with_sqlite_registry):
     # Stateless read should see no rows
     out = inst.execute({'sql': 'SELECT v FROM t'})
     assert out['rows'] == []
+    # The session is invalidated after rollback: reusing the sid must error
+    # (mirrors the post-reap invalidation in test_reap_idle_rolls_back).
+    with pytest.raises(ValueError):
+        inst.execute({'sql': 'SELECT 1', 'session_id': sid})
+    with pytest.raises(ValueError):
+        inst.commit({'session_id': sid})
 
 
 # ---------------------------------------------------------------------------

@@ -353,7 +353,11 @@ export function makePgShim(ctx: ShimContext): PgShim {
 			// SAVEPOINT, RELEASE SAVEPOINT, and SET TRANSACTION fall through as
 			// ordinary session queries so that nested-savepoint support can be
 			// added later without shim changes.
-			const txMatch = /^\s*(START TRANSACTION|BEGIN|COMMIT|ROLLBACK)\b/i.exec(sql);
+			// Anchored to the whole statement so only bare transaction control is
+			// intercepted. Forms like `ROLLBACK TO SAVEPOINT x` / `RELEASE SAVEPOINT x`
+			// must NOT match here — they fall through as ordinary session queries so
+			// nested savepoints keep working.
+			const txMatch = /^\s*(START TRANSACTION|BEGIN|COMMIT|ROLLBACK)\s*;?\s*$/i.exec(sql);
 			if (txMatch) {
 				const kw = txMatch[1].toUpperCase();
 				const intercept = async (): Promise<QueryResult> => {
