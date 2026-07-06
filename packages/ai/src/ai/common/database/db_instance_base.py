@@ -556,8 +556,11 @@ class DatabaseInstanceBase(IInstanceBase, ABC):
         """Execute a raw SQL statement (read or write) without LLM or safety gating.
 
         Uses ``engine.begin()`` so writes auto-commit. Returns
-        ``{'rows': [...], 'affected_rows': N}`` on success or ``None`` on error
-        (logged via ``error()`` to match the ``_executeSQLQuery`` precedent).
+        ``{'rows': [...], 'affected_rows': N}`` on success, or ``None`` on a
+        SQLAlchemy error (logged via ``error()``). A ``max_execute_rows``
+        overflow raises ``RuntimeError`` from *inside* the transaction so
+        ``engine.begin()`` rolls back — otherwise a write (e.g. ``INSERT ...
+        RETURNING``) would commit even though ``execute()`` reports failure.
 
         SELECT results are bounded by ``IGlobal.max_execute_rows`` to keep a
         large query from exhausting worker memory.
@@ -570,7 +573,10 @@ class DatabaseInstanceBase(IInstanceBase, ABC):
                 result = conn.execute(clause, binds)
                 shaped = shape_execute_result(result, self.IGlobal.max_execute_rows)
                 if shaped is None:
+                    # Raise inside the transaction so it rolls back; returning
+                    # None here would let an overflowing write commit anyway.
                     error(f'EXECUTE query exceeded max_execute_rows={self.IGlobal.max_execute_rows}')
+                    raise RuntimeError(f'EXECUTE query exceeded max_execute_rows={self.IGlobal.max_execute_rows}')
                 return shaped
 
         except SQLAlchemyError as e:

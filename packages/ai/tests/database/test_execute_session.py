@@ -170,6 +170,22 @@ def test_rollback_discards_row(instance_with_sqlite_registry):
         inst.commit({'session_id': sid})
 
 
+def test_stateless_execute_overflow_rolls_back_write(instance_with_sqlite_registry):
+    """A non-session write whose RETURNING overflows max_execute_rows must roll back.
+
+    Regression: _executeRawQuery used to log + return None inside engine.begin(),
+    so the write committed even though execute() raised.
+    """
+    inst = instance_with_sqlite_registry
+    inst.IGlobal.max_execute_rows = 0  # any RETURNING row overflows
+    with pytest.raises(RuntimeError, match='max_execute_rows'):
+        inst.execute({'sql': "INSERT INTO t (v) VALUES ('rollback_me') RETURNING v"})
+    # The overflowing write must NOT have persisted.
+    inst.IGlobal.max_execute_rows = 1000
+    out = inst.execute({'sql': 'SELECT v FROM t'})
+    assert out['rows'] == []
+
+
 # ---------------------------------------------------------------------------
 # (d) execute with unknown session_id raises ValueError
 # ---------------------------------------------------------------------------
