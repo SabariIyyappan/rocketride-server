@@ -253,6 +253,8 @@ class DatabaseInstanceBase(IInstanceBase, ABC):
             'required': ['sql'],
             'properties': {
                 'sql': {'type': 'string', 'description': 'Raw SQL statement to execute.'},
+                'session_id': {'type': 'string', 'description': 'Optional transaction session id from begin.'},
+                'params': {'type': 'array', 'description': 'Optional positional bind values for $1..$n.'},
             },
         },
         output_schema={
@@ -278,13 +280,69 @@ class DatabaseInstanceBase(IInstanceBase, ABC):
         if not self.IGlobal.allow_execute:
             raise ValueError('execute tool is disabled for this node (set allow_execute=true)')
 
-        result = self._executeRawQuery(sql.strip())
-        if result is None:
-            raise RuntimeError('SQL execution failed (check server logs for details)')
+        session_id = args.get('session_id')
+        params = args.get('params')
+        if session_id:
+            try:
+                result = self.IGlobal.tx_registry.execute(session_id, sql.strip(), params)
+            except KeyError:
+                raise ValueError(f'unknown or expired transaction session: {session_id}')
+        else:
+            result = self._executeRawQuery(sql.strip(), params)
+            if result is None:
+                raise RuntimeError('SQL execution failed (check server logs for details)')
 
-        # Sanitize rows for JSON serialization
         rows = [self._sanitize_row(row) for row in result['rows']]
         return {'rows': rows, 'affected_rows': result['affected_rows']}
+
+    @tool_function(
+        input_schema={'type': 'object', 'properties': {}},
+        output_schema={'type': 'object', 'properties': {'session_id': {'type': 'string'}}},
+        description=lambda self: f'Begin a transaction on this {self._db_display_name()} database; returns a session_id.',
+    )
+    def begin(self, args):
+        """Begin a transaction and return a session_id."""
+        if not self.IGlobal.allow_execute:
+            raise ValueError('execute tool is disabled for this node (set allow_execute=true)')
+        return {'session_id': self.IGlobal.tx_registry.begin()}
+
+    @tool_function(
+        input_schema={
+            'type': 'object',
+            'required': ['session_id'],
+            'properties': {'session_id': {'type': 'string'}},
+        },
+        output_schema={'type': 'object', 'properties': {'ok': {'type': 'boolean'}}},
+        description=lambda self: 'Commit an open transaction session.',
+    )
+    def commit(self, args):
+        """Commit an open transaction session."""
+        return self._finishTx(args, commit=True)
+
+    @tool_function(
+        input_schema={
+            'type': 'object',
+            'required': ['session_id'],
+            'properties': {'session_id': {'type': 'string'}},
+        },
+        output_schema={'type': 'object', 'properties': {'ok': {'type': 'boolean'}}},
+        description=lambda self: 'Roll back an open transaction session.',
+    )
+    def rollback(self, args):
+        """Roll back an open transaction session."""
+        return self._finishTx(args, commit=False)
+
+    def _finishTx(self, args, *, commit: bool):
+        """Shared commit/rollback implementation enforcing the allow_execute gate."""
+        if not isinstance(args, dict) or not args.get('session_id'):
+            raise ValueError('"session_id" is required')
+        if not self.IGlobal.allow_execute:
+            raise ValueError('execute tool is disabled for this node (set allow_execute=true)')
+        try:
+            (self.IGlobal.tx_registry.commit if commit else self.IGlobal.tx_registry.rollback)(args['session_id'])
+        except KeyError:
+            raise ValueError(f'unknown or expired transaction session: {args["session_id"]}')
+        return {'ok': True}
 
     @tool_function(
         input_schema={
@@ -492,7 +550,7 @@ class DatabaseInstanceBase(IInstanceBase, ABC):
             error(f'Error executing SQL query: {e}')
             return None
 
-    def _executeRawQuery(self, query: str) -> dict | None:
+    def _executeRawQuery(self, query: str, params: list | None = None) -> dict | None:
         """Execute a raw SQL statement (read or write) without LLM or safety gating.
 
         Uses ``engine.begin()`` so writes auto-commit. Returns
@@ -500,26 +558,18 @@ class DatabaseInstanceBase(IInstanceBase, ABC):
         (logged via ``error()`` to match the ``_executeSQLQuery`` precedent).
 
         SELECT results are bounded by ``IGlobal.max_execute_rows`` to keep a
-        large query from exhausting worker memory. ``rowcount`` is normalized
-        to a non-negative int — some dialects return -1 when unknown.
+        large query from exhausting worker memory.
         """
+        from ai.common.database.tx_registry import shape_execute_result, to_sqlalchemy_text
+
         try:
             with self.IGlobal.engine.begin() as conn:
-                result = conn.execute(text(query))
-                if result.returns_rows:
-                    max_rows = self.IGlobal.max_execute_rows
-                    rows = result.fetchmany(max_rows + 1)
-                    if len(rows) > max_rows:
-                        error(f'EXECUTE query exceeded max_execute_rows={max_rows}')
-                        return None
-                    column_names = result.keys()
-                    return {
-                        'rows': [dict(zip(column_names, row)) for row in rows],
-                        'affected_rows': 0,
-                    }
-                rowcount = result.rowcount
-                affected = rowcount if isinstance(rowcount, int) and rowcount >= 0 else 0
-                return {'rows': [], 'affected_rows': affected}
+                clause, binds = to_sqlalchemy_text(query, params)
+                result = conn.execute(clause, binds)
+                shaped = shape_execute_result(result, self.IGlobal.max_execute_rows)
+                if shaped is None:
+                    error(f'EXECUTE query exceeded max_execute_rows={self.IGlobal.max_execute_rows}')
+                return shaped
 
         except SQLAlchemyError as e:
             error(f'Error executing raw SQL query: {e}')
