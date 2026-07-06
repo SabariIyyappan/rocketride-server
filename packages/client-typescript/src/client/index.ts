@@ -48,3 +48,8 @@ export * from './client.js';
 
 // Export the database API namespace (DatabaseApi class, DatabaseDialect enum)
 export * from './database.js';
+
+// Export the Sequelize factory and related types for advanced / standalone use
+export { createSequelize } from './database/sequelize/create-sequelize.js';
+export type { CreateSequelizeOptions, SequelizeConstructor } from './database/sequelize/create-sequelize.js';
+// DatabaseLike is already re-exported via `export * from './database.js'` above.
