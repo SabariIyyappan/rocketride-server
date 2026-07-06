@@ -287,6 +287,16 @@ class DatabaseInstanceBase(IInstanceBase, ABC):
                 result = self.IGlobal.tx_registry.execute(session_id, sql.strip(), params)
             except KeyError:
                 raise ValueError(f'unknown or expired transaction session: {session_id}')
+            except Exception:
+                # A failed session-bound execute (e.g. max_execute_rows overflow)
+                # would otherwise leave the connection pinned until idle-reaping,
+                # with the aborted statement still committable; roll the session
+                # back to release it and discard the statement, then re-raise.
+                try:
+                    self.IGlobal.tx_registry.rollback(session_id)
+                except KeyError:
+                    pass
+                raise
         else:
             result = self._executeRawQuery(sql.strip(), params)
             if result is None:

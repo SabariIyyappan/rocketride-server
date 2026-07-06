@@ -186,6 +186,23 @@ def test_stateless_execute_overflow_rolls_back_write(instance_with_sqlite_regist
     assert out['rows'] == []
 
 
+def test_session_execute_overflow_releases_session(instance_with_sqlite_registry):
+    """A session-bound execute that overflows rolls back and releases the session.
+
+    Otherwise the held connection stays pinned until idle-reaping and the aborted
+    statement remains committable.
+    """
+    inst = instance_with_sqlite_registry
+    # 0-row cap so a session RETURNING overflows.
+    inst.IGlobal.tx_registry = TransactionRegistry(inst.IGlobal.engine, max_rows=0)
+    sid = inst.begin({})['session_id']
+    with pytest.raises(RuntimeError, match='max_rows'):
+        inst.execute({'sql': "INSERT INTO t (v) VALUES ('x') RETURNING v", 'session_id': sid})
+    # The session was rolled back and released: reusing it now errors.
+    with pytest.raises(ValueError, match='unknown or expired'):
+        inst.commit({'session_id': sid})
+
+
 # ---------------------------------------------------------------------------
 # (d) execute with unknown session_id raises ValueError
 # ---------------------------------------------------------------------------
