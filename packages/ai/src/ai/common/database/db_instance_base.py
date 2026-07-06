@@ -298,7 +298,9 @@ class DatabaseInstanceBase(IInstanceBase, ABC):
     @tool_function(
         input_schema={'type': 'object', 'properties': {}},
         output_schema={'type': 'object', 'properties': {'session_id': {'type': 'string'}}},
-        description=lambda self: f'Begin a transaction on this {self._db_display_name()} database; returns a session_id.',
+        description=lambda self: (
+            f'Begin a transaction on this {self._db_display_name()} database; returns a session_id.'
+        ),
     )
     def begin(self, args):
         """Begin a transaction and return a session_id."""
