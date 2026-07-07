@@ -418,6 +418,7 @@ public:
     //-----------------------------------------------------------------
     uint32_t videoStreamIndex = 0;
     uint32_t audioStreamIndex = 0;
+    uint32_t imageStreamIndex = 0;
 
     //-----------------------------------------------------------------
     /// @details
