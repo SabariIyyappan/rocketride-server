@@ -22,7 +22,7 @@
 # =============================================================================
 
 import json
-from typing import List
+from typing import List, Union
 from rocketlib import IInstanceBase, Entry
 from ai.common.schema import Doc, DocMetadata, Question, QuestionType, Answer
 from ai.common.util import normalize
@@ -38,13 +38,13 @@ class IInstance(IInstanceBase):
     chunkId: int = 0
     table: List = []
 
-    def _extractData(self, text: str) -> List[Doc]:
+    def _extractData(self, text: Union[str, List[Doc]]) -> List[Doc]:
         """
-        Extract data from the given text/tables.
+        Extract data from the given text/tables/documents.
 
         Args:
             metadata (Dict[str, Any]): Metadata associated with the document.
-            text (str): Text content of the document.
+            text (Union[str, List[Doc]]): Text content, or documents, to extract from.
 
         Returns:
             List[Doc]: A list of documents with extracted definitions.
@@ -153,6 +153,15 @@ class IInstance(IInstanceBase):
             text (str): The input text to process.
         """
         self._extractData(text)
+
+    def writeDocuments(self, documents: List[Doc]):
+        """
+        Process and write document data. Extracts definitions from the documents' content, so an upstream ``documents`` lane (e.g. a preprocessor or embeddings node) can feed extraction directly.
+
+        Args:
+            documents (List[Doc]): The input documents to process.
+        """
+        self._extractData(documents)
 
     def writeAnswers(self, answer: Answer):
         # Save the new table
