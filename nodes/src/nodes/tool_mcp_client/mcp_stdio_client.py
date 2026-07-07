@@ -43,6 +43,11 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+try:
+    from .mcp_schema import normalize_tool_input_schema
+except ImportError:  # pragma: no cover - standalone import (e.g. unit tests)
+    from mcp_schema import normalize_tool_input_schema
+
 
 class McpProtocolError(RuntimeError):
     pass
@@ -177,7 +182,8 @@ class McpStdioClient:
             if not isinstance(name, str) or not name:
                 continue
             desc = t.get('description') if isinstance(t.get('description'), str) else ''
-            schema = t.get('inputSchema') if isinstance(t.get('inputSchema'), dict) else {'type': 'object'}
+            raw = t.get('inputSchema')
+            schema = normalize_tool_input_schema(raw if isinstance(raw, dict) else None)
             out.append(McpToolDef(name=name, description=desc, inputSchema=schema))
         return out
 
