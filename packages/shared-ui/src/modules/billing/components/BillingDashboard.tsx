@@ -20,7 +20,7 @@
 import React, { useState, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { commonStyles } from '../../../themes/styles';
-import type { CreditBalance, LedgerTransaction, TransactionsResult, UsageRollup } from '../types';
+import type { CreditBalance, TransactionsResult, UsageRollup } from '../types';
 
 // =============================================================================
 // STYLES
@@ -349,7 +349,7 @@ const BalanceBreakdown: React.FC<{ balance: CreditBalance | null; transactions: 
 				<span style={commonStyles.labelUppercase}>Balance Breakdown</span>
 			</div>
 			<div style={S.body}>
-				{breakdown.map(({ resource, purchased, consumed, net, pct }) => (
+				{breakdown.map(({ resource, net, pct }) => (
 					<div key={resource} style={S.resourceRow}>
 						<span style={S.resourceLabel} title={resource}>{resource}</span>
 						<div style={S.barTrack}>
@@ -609,10 +609,8 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({
 	usageByUser,
 	usageByTeam,
 	activeTasks,
-	topupPlans,
 	loading,
 	onTransactionPage,
-	onBuyTopup,
 	onAddCapacity,
 	memberNames,
 	teamNames,

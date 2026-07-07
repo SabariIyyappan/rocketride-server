@@ -48,6 +48,7 @@ import StatusBar from './StatusBar';
 import LoadingScreen from './LoadingScreen';
 import DebugPanel from './DebugPanel';
 import type { ShellConfig } from '../../workspace/types';
+import type { ShellAppEntry } from 'shared';
 import { commonStyles } from 'shared/themes/styles';
 
 // =============================================================================
@@ -260,7 +261,9 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 		if (subGateActive) {
 			if (subGateTriggeredRef.current === activeAppId) return;
 			subGateTriggeredRef.current = activeAppId;
-			ConnectionManager.getInstance().emit('shell:subscribe', { app: activeManifest });
+			// shell-ui's AppManifestEntry and the shared ShellAppEntry are structurally
+			// divergent declarations of the same runtime manifest object.
+			ConnectionManager.getInstance().emit('shell:subscribe', { app: activeManifest as unknown as ShellAppEntry });
 		} else {
 			subGateTriggeredRef.current = null;
 		}

@@ -343,7 +343,7 @@ function childTooltip(child: { id: string; name: string; provider?: string }, ta
  * sources, or any app-specific concepts.  The hosting container provides
  * entries, statuses, and callbacks.
  */
-export const Explorer: React.FC<IExplorerProps> = ({ vfs, config, entries, statuses = new Map(), isConnected, showChildActions = true, activeFilePath, onOpenFile, onFileManage, onChildAction, fileActions, onRefresh, onMove, onUpload }) => {
+export const Explorer: React.FC<IExplorerProps> = ({ config, entries, statuses = new Map(), isConnected, showChildActions = true, activeFilePath, onOpenFile, onFileManage, onChildAction, fileActions, onRefresh, onMove, onUpload }) => {
 	const [viewMode, setViewMode] = useState<'tree' | 'flat'>('tree');
 	const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
 	const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
@@ -648,7 +648,6 @@ export const Explorer: React.FC<IExplorerProps> = ({ vfs, config, entries, statu
 				} else {
 					// ── File row ──────────────────────────────────────────────
 					const file = child as ExplorerEntry;
-					const name = fileName(file.path);
 					const displayName = getDisplayName(file.path);
 					const hasChildren = (file.children?.length ?? 0) > 0;
 					const isFileExpanded = expandedFiles.has(file.path);

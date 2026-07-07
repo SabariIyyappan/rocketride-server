@@ -57,7 +57,7 @@ const styles = {
 		overflowY: 'auto' as const,
 		fontFamily: 'var(--rr-font-family-widget)',
 		color: 'var(--rr-fg-widget)',
-		userSelect: 'none',
+		userSelect: 'none' as const,
 	},
 	title: {
 		margin: '0 0 4px 0',

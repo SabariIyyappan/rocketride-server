@@ -146,7 +146,7 @@ export const TeamsPanel: React.FC<TeamsPanelProps> = ({ teams, teamDetail, activ
 					)}
 				</div>
 				<div style={S.rowList}>
-					{teams.map((t, i) => (
+					{teams.map((t) => (
 						<div key={t.id} onClick={() => onSelectTeam(t.id)} style={{ ...S.rowItem, cursor: 'pointer', borderBottom: 'none' }}>
 							<div style={{ width: 32, height: 32, borderRadius: 7, background: avatarColor(t.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--rr-fg-button)', flexShrink: 0 }}>{t.name[0]}</div>
 							<div style={S.rowInfo}>

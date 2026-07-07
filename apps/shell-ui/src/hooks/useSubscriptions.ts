@@ -59,7 +59,9 @@ export function useSubscriptions(): {
 	const identity = useAuthUser();
 
 	return useMemo(() => {
-		const raw: AppManifestEntry[] = identity?.apps ?? [];
+		// The SDK's AppManifestEntry and shell-ui's workspace AppManifestEntry are
+		// structurally divergent declarations of the same runtime manifest objects.
+		const raw: AppManifestEntry[] = (identity?.apps ?? []) as unknown as AppManifestEntry[];
 
 		// Build lookup maps for fast access
 		const statusMap = new Map<string, AppStatus>();

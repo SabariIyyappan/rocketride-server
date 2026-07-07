@@ -273,9 +273,9 @@ const AppIcon: React.FC<{ name: string; iconUrl?: string; size?: number }> = ({ 
  *
  * @param props - Sidebar configuration and callbacks.
  */
-const Sidebar: React.FC<SidebarProps> = ({ themeConfig, account, hideAppSwitcher, onOverlay }) => {
+const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, hideAppSwitcher, onOverlay }) => {
 	const identity = useContext(ShellIdentityContext);
-	const { prefs, updatePrefs, setTheme, themeOptions, activeAppId, loadedApps, appManifest } = useWorkspace();
+	const { prefs, updatePrefs: _updatePrefs, setTheme, themeOptions, activeAppId, loadedApps, appManifest } = useWorkspace();
 	const { isOnDesktop } = useSubscriptions();
 
 	// --- Collapse / resize state ---------------------------------------------

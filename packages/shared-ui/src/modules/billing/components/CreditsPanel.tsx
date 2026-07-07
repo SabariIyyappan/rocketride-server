@@ -14,7 +14,7 @@
  * never fetches from the server directly.
  */
 
-import React, { useState, useRef, type CSSProperties } from 'react';
+import React, { useState, type CSSProperties } from 'react';
 import { commonStyles } from '../../../themes/styles';
 import type { CreditBalance, CreditPack } from '../types';
 
@@ -160,22 +160,6 @@ function formatCredits(n: number): string {
 	return n.toLocaleString();
 }
 
-/**
- * Applies a label template from Stripe metadata for a given resource.
- * Replaces ``{amount}`` with the formatted number. Falls back to
- * ``"<amount> <resource>"`` when no label is configured.
- */
-function applyLabel(resource: string, amount: number, labels: Record<string, string> | undefined): string {
-	const template = labels?.[resource];
-	if (template) return template.replace('{amount}', formatCredits(amount));
-	return `${formatCredits(amount)} ${resource}`;
-}
-
-/** Converts USD cents to a locale-aware display string (e.g. 2900 → "$29.00"). */
-function formatUsd(cents: number): string {
-	return (cents / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
-}
-
 // =============================================================================
 // PROPS
 // =============================================================================
@@ -197,30 +181,12 @@ export interface CreditsPanelProps {
 // =============================================================================
 
 /** Pure credit balance widget with purchasable pack grid. */
-export const CreditsPanel: React.FC<CreditsPanelProps> = ({ balance, packs, onBuy, onAddCapacity }) => {
-	// ── Purchase state ──────────────────────────────────────────────────────
-	const [purchasing, setPurchasing] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
-
-	// Synchronous guard for rapid repeated clicks. React state updates are
-	// batched/async, so `purchasing` alone can miss back-to-back clicks.
-	const buyInFlightRef = useRef(false);
-
-	/** Handles a pack purchase click — delegates to the host via onBuy. */
-	const handleBuy = async (pack: CreditPack) => {
-		if (buyInFlightRef.current) return;
-		buyInFlightRef.current = true;
-		setError(null);
-		setPurchasing(pack.packId);
-		try {
-			await onBuy(pack);
-		} catch (e: any) {
-			setError(e?.message ?? 'Failed to start checkout. Please try again.');
-		} finally {
-			setPurchasing(null);
-			buyInFlightRef.current = false;
-		}
-	};
+export const CreditsPanel: React.FC<CreditsPanelProps> = ({ balance, onAddCapacity }) => {
+	// ── Error state ──────────────────────────────────────────────────────────
+	// The in-panel pack purchase flow was removed (the host owns checkout via
+	// onAddCapacity), so nothing sets an error today; the banner remains for
+	// the panel's error display slot.
+	const [error] = useState<string | null>(null);
 
 	// ── Render ──────────────────────────────────────────────────────────────
 	return (

@@ -239,14 +239,17 @@ export class ConnectionManager implements IConnectionManager {
 			uri: this.serverUri,
 			clientName: options?.clientName || DEFAULT_CLIENT_NAME,
 			persist: true,
-			env: options?.env,
+			// Env values are strings in practice; the caller-facing option type is
+			// the looser Record<string, unknown>.
+			env: options?.env as Record<string, string> | undefined,
 
 			// Fired for every push event received from the server over WebSocket
 			onEvent: async (message) => {
 				// Transform apaext_account into shell:accountUpdate to avoid
 				// duplicate handling downstream
 				if (message.event === 'apaext_account' && message.body) {
-					this.emit('shell:accountUpdate', message.body as ConnectResult);
+					// The push body is an untyped record but carries the ConnectResult shape.
+					this.emit('shell:accountUpdate', message.body as unknown as ConnectResult);
 					return;
 				}
 				// Broadcast all other server events

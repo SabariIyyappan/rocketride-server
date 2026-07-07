@@ -188,6 +188,12 @@ export interface ShellConnectionEventMap {
 	 */
 	'shell:subscribe': { app: ShellAppEntry; plan?: CheckoutPlan };
 
+	/**
+	 * User cancelled a subscription for an app from the account/billing UI.
+	 * Consumers refresh their entitlement view for the given app.
+	 */
+	'shell:unsubscribe': { appId: string };
+
 	/** Navigate back to the My Apps launcher screen. */
 	'shell:myApps': Record<string, never>;
 
@@ -209,11 +215,12 @@ export interface ShellConnectionEventMap {
 	 */
 	'shell:themeChange': { tokens: Record<string, string> };
 
-	// ── App-defined events ───────────────────────────────────────────────
-	// Apps may emit their own events through the connection manager's event
-	// bus (e.g. 'home:browsingChange'). The index signature allows any
-	// string key so apps don't need to cast custom event names.
-	[key: string]: unknown;
+	/**
+	 * A view became the active/focused view in the workspace. Panels that
+	 * defer measurement or data fetches until visible listen for this to
+	 * (re)initialize when their tab is activated.
+	 */
+	'shell:viewActivated': { viewId: string };
 }
 
 // =============================================================================

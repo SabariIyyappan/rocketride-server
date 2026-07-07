@@ -27,6 +27,6 @@
 			"shell-ui": ["./src/index.ts"]
 		}
 	},
-	"include": ["src/**/*", "*.ts", "*.tsx"],
+	"include": ["src/**/*", "*.ts", "*.tsx", "../../packages/shared-ui/src/types/global.d.ts"],
 	"exclude": ["node_modules", "dist", "build"]
 }

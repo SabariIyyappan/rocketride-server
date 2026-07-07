@@ -17,7 +17,7 @@
  *  - passing the results down as `IAccountViewProps`
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { TabPanel } from '../../components/tab-panel/TabPanel';
 import { commonStyles } from '../../themes/styles';
@@ -32,7 +32,7 @@ import { ApiKeysPanel } from './components/ApiKeysPanel';
 import { OrganizationPanel } from './components/OrganizationPanel';
 import { TeamsPanel } from './components/TeamsPanel';
 import { MembersPanel } from './components/MembersPanel';
-import { S, Modal, PermGrid, PermPill, ExpiryOpts, Avatar, relativeTime, PERM_DISPLAY } from './components/shared';
+import { S, Modal, PermGrid, PermPill, ExpiryOpts, Avatar, relativeTime } from './components/shared';
 
 // =============================================================================
 // REVEAL STYLES
@@ -248,9 +248,6 @@ const AccountView: React.FC<IAccountViewProps> = (props) => {
 	// =========================================================================
 	// PERMISSION HELPERS
 	// =========================================================================
-
-	/** The organization's ID (used for org-scoped env calls). */
-	const orgId = profile?.organization?.id;
 
 	// Build appId → app lookup for display name resolution
 	const appMap = useMemo(() => {

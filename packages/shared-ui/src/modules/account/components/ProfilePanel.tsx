@@ -16,7 +16,7 @@ import React, { useState, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { commonStyles } from '../../../themes/styles';
 import type { ConnectResult, ProfileUpdate } from '../types';
-import { S, Badge, PermPill, Avatar, Modal, initials, avatarColor } from './shared';
+import { S, Badge, Avatar, Modal, initials, avatarColor } from './shared';
 
 // =============================================================================
 // PROPS
@@ -74,7 +74,7 @@ const VerifiedBadge: React.FC = () => (
  * a list of their organizations and team memberships with a "Set default"
  * action per team, a Sign Out button, and an inline Edit Profile modal.
  */
-export const ProfilePanel: React.FC<ProfilePanelProps> = ({ profile, authUser, onSave, onSetDefaultTeam, onSetDefaultOrg, onLogout, onDeleteAccount }) => {
+export const ProfilePanel: React.FC<ProfilePanelProps> = ({ profile, authUser, onSave, onSetDefaultTeam, onSetDefaultOrg }) => {
 	/**
 	 * Builds a ProfileUpdate snapshot from the current profile/authUser props.
 	 * Called both on mount and whenever the underlying data changes, so the

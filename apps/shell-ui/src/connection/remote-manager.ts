@@ -78,10 +78,13 @@ export class RemoteManager extends BaseManager {
 			throw new Error('Authentication failed: unknown user or invalid credentials.');
 		}
 
-		// Cache server info if available
-		if (result.serverVersion) {
+		// Cache server info if available. serverVersion is sent by newer servers
+		// but is not declared on the SDK's ConnectResult type, so read it via an
+		// untyped record view.
+		const serverVersion = (result as unknown as Record<string, unknown>).serverVersion as string | undefined;
+		if (serverVersion) {
 			this.serverInfo = {
-				version: result.serverVersion,
+				version: serverVersion,
 				publishedAt: null,
 			};
 		}
