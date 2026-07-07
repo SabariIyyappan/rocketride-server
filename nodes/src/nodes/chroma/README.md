@@ -30,6 +30,8 @@ Documents must pass through an embedding node before reaching this node; chunks 
 | `serverName` | string | Default "chroma". Namespace for agent-facing tool names, e.g. 'chroma' exposes tools as chroma.search / chroma.upsert / chroma.delete. Change this when running multiple Chroma nodes in the same pipeline so their tool names do not collide. |
 | `profile` | string | Default "cloud". Connect to... |
 | `provider` | string |  |
+| `score` | number | **Retrieval Score** — minimum similarity (0.0–1.0) a document must reach to be returned. Applied by the base store's `threshold_search`. Defaults to 0.5. |
+| `top_k` | number | **Top K** — maximum candidate documents fetched from Chroma before score filtering. Unset ⇒ the caller's limit (25 on the data lane). Raise it to widen recall for a reranker. |
 
 ---
 
@@ -60,8 +62,19 @@ Tool calls run on the control plane and do not flow through the pipeline's embed
 
 - **Semantic search** requires the question to carry an embedding; it raises an error otherwise. Non-zero result offsets are not supported in semantic search.
 - **Keyword search** uses ChromaDB's `$contains` document filter and supports offset/limit paging.
-- Raw distances are normalized to scores: cosine distances map to `(distance + 1) / 2`; `l2`/`ip` distances pass through a sigmoid. Results scoring below **0.20** are always dropped before they leave the node, regardless of the `score` threshold.
+- Raw distances are normalized to scores: cosine distances map to `(distance + 1) / 2`; `l2`/`ip` distances pass through a sigmoid. Results are then filtered against the configured **Retrieval Score** threshold — the base store's `threshold_search` on the data lane, and the `search` tool's own `score_threshold` on the tool path. There is no hidden hardcoded floor.
 - Filters on `nodeId`, `parent`, `objectId`, `tableId`, `chunkId` ranges, and permissions are translated to ChromaDB `where` clauses. Documents marked deleted are excluded with `$ne: true`, so records that never had an `isDeleted` key still match (they are treated as active).
+
+---
+
+## Retrieval tuning
+
+Two fields control what a question retrieves:
+
+- **Retrieval Score** (`score`) is the minimum similarity a chunk must reach to be returned. Lower it (e.g. `0.4`) to improve recall when precise, number-dense chunks are being missed; raise it to keep only strong matches. Defaults to `0.5`.
+- **Top K** (`top_k`) is how many candidate chunks are fetched from Chroma before score filtering. Raise it (e.g. `20`) to widen the candidate pool for a reranker or for hard, specific queries. When unset, the caller's request limit is used (25 on the data lane; the `chroma.search` tool sets its own `top_k`). It applies to semantic and keyword search only, not to whole-object fetches.
+
+For the strongest results on precise questions, **retrieve generously and rerank down**: set a higher `Top K` here, then place a [Cohere Rerank](../rerank_cohere/README.md) node after this one to reorder the candidates and keep a small, high-relevance set. A complete example is at [`examples/rag-rerank-pipeline.pipe`](../../../../examples/rag-rerank-pipeline.pipe).
 
 ---
 
