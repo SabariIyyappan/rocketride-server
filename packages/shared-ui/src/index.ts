@@ -125,6 +125,12 @@ export type { IChipProps, IChipAddProps } from './components/chip/Chip';
 export { DropZone } from './components/drop-zone/DropZone';
 export type { IDropZoneProps } from './components/drop-zone/DropZone';
 
+// --- DataTable + DataSource (style guide section 6.1) ------------------------
+export { DataTable } from './components/data-table/DataTable';
+export type { DataTableColumn, IDataTableProps } from './components/data-table/DataTable';
+export { createArrayDataSource, createQueryDataSource } from './components/data-table/dataSource';
+export type { DataQuery, DataPage, DataSource } from './components/data-table/dataSource';
+
 // --- Stock composition components (style guide sections 5-6) ------------------
 export { ContentHeader } from './components/content-header/ContentHeader';
 export type { IContentHeaderProps } from './components/content-header/ContentHeader';
