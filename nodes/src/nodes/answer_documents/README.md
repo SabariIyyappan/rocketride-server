@@ -36,7 +36,7 @@ No configuration fields. Wire answers in.
 
 Place this node after an LLM, agent, or extract/validate node (anything that produces `answers`) and before an embedding node and vector store:
 
-```
+```text
 llm / agent  →  answer_documents  →  embedding_*  →  vector store
                                  ↘  response (original answer, optional)
 ```

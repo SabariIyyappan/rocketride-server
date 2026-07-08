@@ -42,13 +42,13 @@ class IInstance(IInstanceBase):
     # Running chunk counter, reset per input object.
     chunkId: int = 0
 
-    def open(self, object: Entry):
+    def open(self, obj: Entry):
         """Initialize the instance for a new object.
 
         Resets the chunk ID so document positions start fresh for this object.
 
         Args:
-            object (Entry): The object to initialize processing for.
+            obj (Entry): The object to initialize processing for.
         """
         self.chunkId = 0
 
