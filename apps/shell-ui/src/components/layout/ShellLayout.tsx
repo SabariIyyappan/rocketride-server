@@ -43,12 +43,14 @@ import { ShellApiConfigProvider } from '../../connection/ShellApiConfigContext';
 import { getCommonKeys, resolveSettingsForApp } from '../../views/settings/settingsUtils';
 import { AppErrorBoundary } from './AppErrorBoundary';
 import { OverlayManager, useOverlay } from './OverlayManager';
+import { HostChromeProvider, useHostChromeState } from './HostChromeContext';
 import Sidebar from './Sidebar';
 import StatusBar from './StatusBar';
 import LoadingScreen from './LoadingScreen';
 import DebugPanel from './DebugPanel';
 import type { ShellConfig } from '../../workspace/types';
 import { commonStyles } from 'shared/themes/styles';
+import { ContentViewMenu } from 'shared';
 
 // =============================================================================
 // STYLES
@@ -272,7 +274,11 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 	if (!loaded && !seeded) return null;
 
 	// --- Derived layout info -------------------------------------------------
-	const hasSidebar = !!activeApp?.components?.Sidebar;
+	// The sidebar is always mounted (inside HostChromeProvider) and self-hides
+	// when it has no content: a legacy `components.Sidebar`, app-registered
+	// sidebar content, or a 'sidebar'-placement ViewMenu. Apps with none of
+	// these render no sidebar and the client area spans full width — exactly as
+	// before, when the sidebar was gated on `components.Sidebar` here.
 	const appName = activeApp?.branding?.appName ?? config.apps[0]?.name ?? 'RocketRide';
 	// Only show the status bar once the app has actually loaded. During the app-load gap the
 	// client area shows the boot rocket (LoadingScreen); rendering the StatusBar there made it
@@ -283,18 +289,17 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 	// --- Render --------------------------------------------------------------
 	return (
 		<ShellApiConfigProvider config={mergedApiConfig}>
+		<HostChromeProvider>
 		<OverlayManager>
 		<div style={styles.shell}>
 			{/* Main row: Sidebar | Client Area | Debug Panel */}
 			<div style={styles.main}>
-				{/* Sidebar zone */}
-				{hasSidebar && (
-					<SidebarWithOverlay
-						themeConfig={config.themeConfig}
-						account={config.account}
-						hideAppSwitcher={hideAppSwitcher}
-					/>
-				)}
+				{/* Sidebar zone — always mounted; self-hides when it has no content. */}
+				<SidebarWithOverlay
+					themeConfig={config.themeConfig}
+					account={config.account}
+					hideAppSwitcher={hideAppSwitcher}
+				/>
 
 				{/* Client area */}
 				<div style={styles.overlayContainer}>
@@ -323,6 +328,11 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 							// with no "Loading…" text frame flashing between them.
 							<LoadingScreen />
 						) : null}
+
+						{/* ContentViewMenu tray — 'bottom'-placement ViewMenu rendered
+						    at the base of the client area column, directly above the
+						    StatusBar. Renders nothing until a view registers one. */}
+						<ContentViewMenuSlot />
 					</div>
 				</div>
 
@@ -344,7 +354,32 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 			)}
 		</div>
 		</OverlayManager>
+		</HostChromeProvider>
 		</ShellApiConfigProvider>
+	);
+};
+
+// =============================================================================
+// CONTENT VIEWMENU SLOT — bottom-tray ViewMenu above the StatusBar
+// =============================================================================
+
+/**
+ * Reads the registered ViewMenu and renders the shared {@link ContentViewMenu}
+ * tray when the active view opted into 'bottom' placement (the default). A
+ * 'sidebar'-placement menu is rendered by the Sidebar instead, so this slot
+ * renders nothing for it. Renders nothing when no menu is registered — today's
+ * layout for every app that has not adopted the ViewMenu API.
+ */
+const ContentViewMenuSlot: React.FC = () => {
+	const { viewMenu } = useHostChromeState();
+	// Only the default 'bottom' placement renders here.
+	if (!viewMenu || (viewMenu.menu.placement ?? 'bottom') !== 'bottom') return null;
+	return (
+		<ContentViewMenu
+			menu={viewMenu.menu}
+			activeId={viewMenu.activeId}
+			onSelect={viewMenu.onSelect}
+		/>
 	);
 };
 

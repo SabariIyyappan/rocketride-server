@@ -89,6 +89,10 @@ export { useShellEvent } from './hooks/useShellEvent';
 // Connection-aware interval polling
 export { usePolling } from './hooks/usePolling';
 
+// Shared 3s dashboard snapshot + live activity events (module-level singleton)
+export { useDashboardData } from './hooks/useDashboardData';
+export type { DashboardData } from './hooks/useDashboardData';
+
 // Null-safe client access (only returns client when connected)
 export { useClient } from './hooks/useClient';
 
@@ -128,6 +132,17 @@ export { useFixedPopupPosition } from 'shared/hooks/useFixedPopupPosition';
 
 // Debug panel
 export { default as DebugPanel } from './components/layout/DebugPanel';
+
+// =============================================================================
+// HOST CHROME — opt-in sidebar-content + ViewMenu registration
+// =============================================================================
+
+// Declare sidebar content / a ViewMenu for the calling view; the shell frame
+// places them (scrolling sidebar slot, sidebar or bottom-tray ViewMenu renderer).
+export { useSidebarContent, useViewMenu } from './components/layout/HostChromeContext';
+export type { UseViewMenuOptions } from './components/layout/HostChromeContext';
+// ViewMenu declaration types (re-exported from shared for app convenience).
+export type { ViewMenu, ViewMenuEntry } from 'shared';
 
 // =============================================================================
 // AUTH

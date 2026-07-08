@@ -34,9 +34,10 @@
 // =============================================================================
 //
 // This module is the SINGLE curated surface that Module Federation remote apps
-// consume from shell-ui. It gathers every value symbol apps actually import
-// (established by grepping `from 'shell-ui'` across every app in the monorepo)
-// into one `shellApi` object, plus the standalone types apps import.
+// consume from shell-ui. Per the design-owner decision the contract covers
+// shell-ui's ENTIRE public export surface (not just the currently-consumed
+// subset): every value symbol is gathered into one `shellApi` object and every
+// standalone type is named via explicit type re-exports.
 //
 // `./builder shell:freeze` bundles this file into a frozen, versioned `.d.ts`
 // (packages/shell-api/versions/vN.d.ts). `ShellApiShape` is the compile-time
@@ -50,25 +51,57 @@
 
 // Hooks
 import { useShellConnection } from './connection/ConnectionContext';
-import { useAuthUser } from './hooks/useAuthUser';
+import { useAuthUser, useLogout } from './hooks/useAuthUser';
 import { useWorkspace } from './workspace/WorkspaceContext';
 import { useClient } from './hooks/useClient';
 import { useShellEvent } from './hooks/useShellEvent';
 import { useSubscriptions } from './hooks/useSubscriptions';
 import { usePolling } from './hooks/usePolling';
+import { useDashboardData } from './hooks/useDashboardData';
+import { useConnectionStatus } from './hooks/useConnectionStatus';
+import { useShellApiConfig } from './connection/ShellApiConfigContext';
+import { useShellEvents } from './views/useShellEvents';
+import { useAppComponent } from './lib/useAppComponent';
+import { useSidebarContent, useViewMenu } from './components/layout/HostChromeContext';
+
+// Shared hooks re-exported through shell-ui for app convenience
+import { useClickOutside } from 'shared/hooks/useClickOutside';
+import { useFixedPopupPosition } from 'shared/hooks/useFixedPopupPosition';
 
 // Non-React client access + connection manager singleton
 import { getClient } from './lib/getClient';
 import { ConnectionManager } from './connection/connection';
 
+// Connection state enum (re-exported from shared)
+import { ConnectionState } from 'shared';
+
+// Auth providers
+import { CloudAuthProvider } from './auth/CloudAuthProvider';
+import { ApiKeyAuthProvider } from './auth/ApiKeyAuthProvider';
+
+// Workspace provider
+import { WorkspaceProvider } from './workspace/WorkspaceContext';
+
 // Document component library
 import { Documents } from './lib/Documents';
 import DocTabs from './lib/DocTabs';
 import DocSplitLayout from './lib/DocSplitLayout';
+import { DocExplorer } from './lib/DocExplorer';
 
-// Layout components
+// Top-level shell frame + zone components
+import Shell from './components/layout/Shell';
+import Sidebar from './components/layout/Sidebar';
+import BottomPanel from './components/layout/BottomPanel';
+import DebugPanel from './components/layout/DebugPanel';
+
+// Layout building blocks
 import { NavButton } from './components/layout/Sidebar';
 import ConfirmDialog from './components/layout/ConfirmDialog';
+import { PopupRow } from 'shared/components/PopupRow';
+
+// Shell-owned overlay pages
+import AccountPage from './views/account/AccountPage';
+import SettingsPage from './views/settings/SettingsPage';
 
 // Icons
 import {
@@ -101,6 +134,7 @@ import {
 // the value symbols above are captured structurally through `ShellApiShape`.
 // =============================================================================
 
+// Shell component prop contracts + workspace/config types
 export type {
 	ShellAppProps,
 	ShellSidebarProps,
@@ -108,10 +142,60 @@ export type {
 	AppManifestEntry,
 	ShellConfig,
 	ShellApiConfig,
+	WorkspacePrefs,
+	WorkspaceState,
+	AppWorkspaceState,
+	AppSettingDefinition,
+	ShellBrandingConfig,
+	ShellThemeConfig,
+	ShellThemeOption,
+	ShellAccountConfig,
 } from './workspace/types';
+
+// Top-level shell + sidebar component prop types
+export type { ShellProps } from './components/layout/Shell';
+export type { SidebarProps, NavButtonProps } from './components/layout/Sidebar';
+export type { ConfirmDialogProps } from './components/layout/ConfirmDialog';
+
+// Workspace context interface
+export type { IWorkspaceContext } from './workspace/WorkspaceContext';
+
+// Connection manager standalone types
+export type { InitOptions, DebugLogEntry } from './connection/connection';
+
+// Auth identity type (ConnectResult aliased as AuthUser)
+export type { AuthUser } from './hooks/useAuthUser';
+
+// Event map + connection status/mode/auth-provider types (from shared)
+export type { ShellConnectionEventMap as ShellEventMap } from 'shared';
+export type { ConnectionStatus, ConnectionMode, IAuthProvider } from 'shared';
+
+// Iframe protocol message types
+export type { ShellToIframeMsg, IframeToShellMsg, ShellInitMsg } from './views/ShellIframeProtocol';
+
+// Document component library standalone types.
 // `Documents` itself is captured as a constructor via `shellApi.Documents`;
-// these are its standalone helper types that apps import directly.
-export type { Editor, WorkspaceBinding } from './lib/Documents';
+// these are its standalone helper/model types that apps import directly.
+export type {
+	Editor,
+	WorkspaceBinding,
+	Document,
+	EditorGroup,
+	SplitOrientation,
+	DocumentsState,
+	LayoutNode,
+	LayoutLeaf,
+	LayoutSplit,
+} from './lib/Documents';
+export type { DocTabsProps } from './lib/DocTabs';
+export type { DocSplitLayoutProps } from './lib/DocSplitLayout';
+export type { DocExplorerProps, DocExplorerConfig, DocEntry, DocEntryChild, DocEntryStatus } from './lib/DocExplorer';
+export type { IVirtualFileSystem } from 'shared/modules/explorer/types';
+
+// Host-chrome (opt-in) registration types + ViewMenu declaration types
+export type { UseViewMenuOptions } from './components/layout/HostChromeContext';
+export type { DashboardData } from './hooks/useDashboardData';
+export type { ViewMenu, ViewMenuEntry } from 'shared';
 
 // =============================================================================
 // SHELL API SURFACE
@@ -120,33 +204,62 @@ export type { Editor, WorkspaceBinding } from './lib/Documents';
 /**
  * The curated set of value symbols shell-ui exposes to remote apps.
  *
- * Every member here is imported by at least one app (verified by survey), plus
- * `usePolling`, the shell's canonical connection-aware polling hook. The object
- * is frozen at build time so its type — `ShellApiShape` — becomes the versioned
- * contract enforced against shell-ui's own compilation.
+ * Per the design-owner decision this covers shell-ui's ENTIRE value export
+ * surface. The object is frozen at build time so its type — `ShellApiShape` —
+ * becomes the versioned contract enforced against shell-ui's own compilation.
  */
 export const shellApi = {
 	// Hooks
 	useShellConnection,
 	useAuthUser,
+	useLogout,
 	useWorkspace,
 	useClient,
 	useShellEvent,
+	useShellEvents,
 	useSubscriptions,
 	usePolling,
+	useDashboardData,
+	useConnectionStatus,
+	useShellApiConfig,
+	useAppComponent,
+	useSidebarContent,
+	useViewMenu,
+	useClickOutside,
+	useFixedPopupPosition,
 
-	// Client access + connection manager
+	// Client access + connection manager + connection state
 	getClient,
 	ConnectionManager,
+	ConnectionState,
+
+	// Auth providers
+	CloudAuthProvider,
+	ApiKeyAuthProvider,
+
+	// Workspace provider
+	WorkspaceProvider,
 
 	// Document component library
 	Documents,
 	DocTabs,
 	DocSplitLayout,
+	DocExplorer,
 
-	// Layout components
+	// Top-level shell frame + zone components
+	Shell,
+	Sidebar,
+	BottomPanel,
+	DebugPanel,
+
+	// Layout building blocks
 	NavButton,
 	ConfirmDialog,
+	PopupRow,
+
+	// Shell-owned overlay pages
+	AccountPage,
+	SettingsPage,
 
 	// Icons
 	BxPlus,
@@ -181,11 +294,10 @@ export type ShellApiShape = typeof shellApi;
 /**
  * The current in-source shell API version.
  *
- * Incremented implicitly by each successful `shell:freeze` (which writes the
- * next `vN`); this constant tracks the highest frozen version the source
- * currently targets.
+ * Incremented by each successful `shell:freeze` (which writes the next `vN`);
+ * this constant tracks the highest frozen version the source currently targets.
  */
-export const SHELL_API_VERSION = 0 as const;
+export const SHELL_API_VERSION = 1 as const;
 
 /**
  * Returns the curated shell API surface.
