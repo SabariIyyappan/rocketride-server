@@ -299,6 +299,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 					themeConfig={config.themeConfig}
 					account={config.account}
 					hideAppSwitcher={hideAppSwitcher}
+					isSaas={(config.capabilities ?? []).includes('saas')}
 				/>
 
 				{/* Client area */}
@@ -434,13 +435,16 @@ const SidebarWithOverlay: React.FC<{
 	themeConfig: ShellConfig['themeConfig'];
 	account: ShellConfig['account'];
 	hideAppSwitcher?: boolean;
-}> = ({ themeConfig, account, hideAppSwitcher }) => {
+	/** Server-probed edition flag ('saas' capability) — gates SaaS-only menu items. */
+	isSaas?: boolean;
+}> = ({ themeConfig, account, hideAppSwitcher, isSaas }) => {
 	const onOverlay = useOverlay();
 	return (
 		<Sidebar
 			themeConfig={themeConfig}
 			account={account}
 			hideAppSwitcher={hideAppSwitcher}
+			isSaas={isSaas}
 			onOverlay={onOverlay}
 		/>
 	);

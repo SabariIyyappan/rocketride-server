@@ -41,7 +41,6 @@ import type { ShellThemeConfig, ShellAccountConfig } from '../../workspace/types
 import { SidebarFooter } from 'shared/components/sidebar-footer/SidebarFooter';
 import type { SidebarFooterMenuItem } from 'shared/components/sidebar-footer/SidebarFooter';
 import { useSubscriptions } from '../../hooks/useSubscriptions';
-import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import { RocketRideMark, SidebarViewMenu } from 'shared';
 import RocketRideWordmark from '../../icons/RocketRideWordmark';
 import { useHostChromeState } from './HostChromeContext';
@@ -75,6 +74,14 @@ export interface SidebarProps {
 	hideAppSwitcher?: boolean;
 	/** Callback to open a shell overlay (account, settings, environment). */
 	onOverlay: (overlay: 'account' | 'settings' | 'environment') => void;
+	/**
+	 * Server-probed edition flag (the 'saas' capability from the bootstrap
+	 * probe). Gates SaaS-only footer items — the Account overlay has no
+	 * backend on OSS/local servers, so the item is hidden there. NOTE: the
+	 * connection mode is NOT a valid signal here (it defaults to 'cloud'
+	 * regardless of the server edition).
+	 */
+	isSaas?: boolean;
 }
 
 // =============================================================================
@@ -121,9 +128,11 @@ export const NavButton: React.FC<NavButtonProps> = ({ icon: Icon, label, isActiv
 				padding: collapsed ? 0 : '0 10px', margin: collapsed ? '0 auto' : 0,
 				borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13,
 				fontWeight: isActive ? 600 : 400,
-				color: isActive ? 'var(--rr-brand)' : iconColor ?? 'var(--rr-text-secondary)',
+				// Active rows use the blue list-selection tokens (design-owner
+				// preference, matching Explorer's selected rows) — not brand orange.
+				color: isActive ? 'var(--rr-fg-list-active)' : iconColor ?? 'var(--rr-text-secondary)',
 				background: isActive
-					? 'color-mix(in srgb, var(--rr-brand) 20%, transparent)'
+					? 'var(--rr-bg-list-active)'
 					: hovered ? 'var(--rr-bg-surface-alt)' : 'transparent',
 				transition: 'background 100ms ease, color 100ms ease', overflow: 'hidden',
 			}}
@@ -275,7 +284,7 @@ const AppIcon: React.FC<{ name: string; iconUrl?: string; size?: number }> = ({ 
  *
  * @param props - Sidebar configuration and callbacks.
  */
-const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, hideAppSwitcher, onOverlay }) => {
+const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, hideAppSwitcher, onOverlay, isSaas }) => {
 	const identity = useContext(ShellIdentityContext);
 	const { prefs, updatePrefs: _updatePrefs, setTheme, themeOptions, activeAppId, loadedApps, appManifest } = useWorkspace();
 	const { isOnDesktop } = useSubscriptions();
@@ -388,17 +397,12 @@ const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, h
 
 	const showAppSwitcher = !hideAppSwitcher && appManifest.length > 1;
 
-	// Account management is a SaaS concept (cloud identity/org/billing): the
-	// overlay entry only appears when connected in cloud mode. OSS/local/onprem
-	// modes have no account backend, so the item is hidden entirely.
-	const { connectionMode } = useConnectionStatus();
-	const isCloudMode = connectionMode === 'cloud';
 
 	const footerMenuItems: SidebarFooterMenuItem[] = useMemo(() => {
 		const items: SidebarFooterMenuItem[] = [
 			{ id: 'home', label: 'Home', icon: BxHome, onClick: () => ConnectionManager.getInstance().emit('shell:switchApp', { appId: 'rocketride.home' }) },
-			...(isCloudMode ? [{ id: 'account', label: 'Account', icon: BxUser, dividerBefore: true, onClick: () => onOverlay('account') } satisfies SidebarFooterMenuItem] : []),
-			{ id: 'environment', label: 'Variables', icon: BxLock, dividerBefore: !isCloudMode, onClick: () => onOverlay('environment') },
+			...(isSaas ? [{ id: 'account', label: 'Account', icon: BxUser, dividerBefore: true, onClick: () => onOverlay('account') } satisfies SidebarFooterMenuItem] : []),
+			{ id: 'environment', label: 'Variables', icon: BxLock, dividerBefore: !isSaas, onClick: () => onOverlay('environment') },
 			// Settings is a global workspace view (shell "General" plus any installed app's
 			// settings), so it's always available. Per-app gating lives in SettingsPage.
 			{ id: 'settings', label: 'Settings', icon: BxCog, onClick: () => onOverlay('settings') },
@@ -439,7 +443,7 @@ const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, h
 		items.push({ id: 'logout', label: 'Log out', icon: BxExport, dividerBefore: true, onClick: () => account.onLogout?.() });
 
 		return items;
-	}, [themeOptions, prefs.theme, showAppSwitcher, appManifest, activeAppId, isOnDesktop, account, handleThemeSelect, onOverlay, isCloudMode]);
+	}, [themeOptions, prefs.theme, showAppSwitcher, appManifest, activeAppId, isOnDesktop, account, handleThemeSelect, onOverlay, isSaas]);
 
 	// --- Don't render sidebar when not authenticated -------------------------
 

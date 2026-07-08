@@ -84,11 +84,12 @@ const styles = {
 		borderWidth: 1,
 		borderStyle: 'solid',
 		borderColor: 'transparent',
-		// Active: brand-tinted fill + brand-tinted border + bolder label.
+		// Active: blue list-selection fill (design-owner preference, matching
+		// Explorer's selected rows) + bolder label. Border stays transparent.
 		...(active
 			? {
-					background: 'color-mix(in srgb, var(--rr-brand) 10%, transparent)',
-					borderColor: 'color-mix(in srgb, var(--rr-brand) 55%, transparent)',
+					background: 'var(--rr-bg-list-active)',
+					color: 'var(--rr-fg-list-active)',
 					fontWeight: 600,
 			  }
 			: null),
@@ -102,15 +103,17 @@ const styles = {
 	} as CSSProperties,
 
 	// Leading icon slot on expanded rows (17px box matching the shell nav icons).
-	itemIcon: {
+	// Active rows inherit the selection foreground so the glyph stays legible
+	// on the blue fill; inactive rows use the quiet secondary tone.
+	itemIcon: (active: boolean): CSSProperties => ({
 		display: 'inline-flex',
 		alignItems: 'center',
 		justifyContent: 'center',
 		width: 17,
 		height: 17,
 		flexShrink: 0,
-		color: 'var(--rr-text-secondary)',
-	} as CSSProperties,
+		color: active ? 'inherit' : 'var(--rr-text-secondary)',
+	}),
 
 	// Collapsed (icon-rail) row: square, centered icon target with the same
 	// active-pill treatment; the badge overlays the top-right corner.
@@ -129,10 +132,11 @@ const styles = {
 		borderWidth: 1,
 		borderStyle: 'solid',
 		borderColor: 'transparent',
+		// Active: blue list-selection fill (see styles.item).
 		...(active
 			? {
-					background: 'color-mix(in srgb, var(--rr-brand) 10%, transparent)',
-					borderColor: 'color-mix(in srgb, var(--rr-brand) 55%, transparent)',
+					background: 'var(--rr-bg-list-active)',
+					color: 'var(--rr-fg-list-active)',
 			  }
 			: null),
 		...(!active && hovered ? { background: 'var(--rr-bg-list-hover)' } : null),
@@ -209,7 +213,7 @@ export function SidebarViewMenu({ menu, activeId, onSelect, sectionLabel, collap
 						onMouseLeave={() => setHoveredId(null)}
 					>
 						{/* Optional leading icon — same glyph the collapsed rail shows. */}
-						{entry.icon && <span style={styles.itemIcon}>{entry.icon}</span>}
+						{entry.icon && <span style={styles.itemIcon(isActive)}>{entry.icon}</span>}
 						<span style={styles.label}>{entry.label}</span>
 						{/* Right-aligned count badge when the entry declares a count. */}
 						{entry.count != null && <ViewMenuBadge count={entry.count} severity={entry.severity} />}

@@ -87,7 +87,6 @@ const S = {
 		flex: 1,
 		minWidth: 0,
 	} as CSSProperties,
-	spacer: { flex: 1 } as CSSProperties,
 	dot: (color: string): CSSProperties => ({
 		width: 8,
 		height: 8,
@@ -601,9 +600,8 @@ export const Explorer: React.FC<IExplorerProps> = ({ config, entries, statuses =
 							) : (
 								<span style={S.rowName}>{dir.name}</span>
 							)}
-							<span style={S.spacer} />
 							{dirDot && <div style={S.dot(dirDot)} />}
-							{hasFileManage && hoveredRow === rowKey && !isRenaming && (
+							{hasFileManage && (hoveredRow === rowKey || menuPath === dir.path) && !isRenaming && (
 								<button
 									style={S.menuBtn}
 									onClick={(e) => {
@@ -691,9 +689,8 @@ export const Explorer: React.FC<IExplorerProps> = ({ config, entries, statuses =
 							) : (
 								<span style={S.rowName}>{displayName}</span>
 							)}
-							<span style={S.spacer} />
 							{dotColor && <div style={S.dot(dotColor)} />}
-							{hasFileManage && hoveredRow === rowKey && !isRenaming && (
+							{hasFileManage && (hoveredRow === rowKey || menuPath === file.path) && !isRenaming && (
 								<button
 									style={{ ...S.menuBtn, ...(isFileSelected ? { color: 'var(--rr-fg-list-active)' } : {}) }}
 									onClick={(e) => {
@@ -815,7 +812,6 @@ export const Explorer: React.FC<IExplorerProps> = ({ config, entries, statuses =
 									<span style={S.rowName}>{ch.name}</span>
 									{errCount > 0 && <span style={S.badge('var(--rr-color-error)')}>&#10006; {errCount}</span>}
 									{warnCount > 0 && <span style={S.badge('var(--rr-color-warning)')}>&#9888; {warnCount}</span>}
-									<span style={S.spacer} />
 									{hoveredRow === chRowKey && isConnected && showChildActions && onChildAction && file.documentId && (
 										<button
 											style={S.actionBtn(chRunning ? 'var(--rr-color-error)' : 'var(--rr-color-success)')}
