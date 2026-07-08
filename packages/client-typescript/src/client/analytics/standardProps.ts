@@ -55,14 +55,6 @@ export type CaptureMode = 'posthog-js' | 'raw';
 /** SDK identity reported on every event. */
 export const RR_LIB = 'rocketride-js' as const;
 
-// Hardcoded (not read from package.json) to keep this module import-free /
-// zero-runtime — it's consumed by home-ui via a SOURCE alias, so it can't rely
-// on a build-time define, and by client-typescript's plain-tsc build, which has
-// no define step. Drift is guarded instead: `tests/analytics.version.test.ts`
-// fails CI if this doesn't equal package.json `version`, so a version bump can't
-// silently ship a stale `$lib_version`.
-export const RR_LIB_VERSION = '1.3.0' as const;
-
 /** Environment the caller supplies. Pure in => pure out. */
 export interface AnalyticsEnv {
 	/** Runtime platform. */
@@ -85,7 +77,11 @@ export interface AnalyticsEnv {
 		app?: string;
 		organization?: string;
 	};
-	/** Override the reported SDK version (defaults to RR_LIB_VERSION). */
+	/**
+	 * Optional lib version reported as `$lib_version`. Omitted when unset — on the
+	 * browser path posthog-js supplies its own; a consumer that wants a specific
+	 * value passes it in from its own build.
+	 */
 	libVersion?: string;
 }
 
@@ -98,7 +94,7 @@ export interface StandardProps {
 	surface: Surface;
 	app_version: string;
 	$lib: typeof RR_LIB;
-	$lib_version: string;
+	$lib_version?: string;
 	session_id?: string;
 	$session_id?: string;
 	$process_person_profile?: false;
@@ -125,8 +121,10 @@ export function standardProps(env: AnalyticsEnv, mode: CaptureMode = 'raw'): Sta
 		surface: env.surface,
 		app_version: env.appVersion,
 		$lib: RR_LIB,
-		$lib_version: env.libVersion ?? RR_LIB_VERSION,
 	};
+	// Only set $lib_version when a consumer supplies one (from its own build).
+	// Omitting it lets posthog-js report its native version on the browser path.
+	if (env.libVersion !== undefined) props.$lib_version = env.libVersion;
 
 	// RocketRide's own session id, always emitted when known.
 	if (env.sessionId !== undefined) {
