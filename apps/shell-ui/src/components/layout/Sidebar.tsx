@@ -512,19 +512,22 @@ const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, h
 			<div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', minHeight: 0 }}>
 				{/* Stock SidebarViewMenu at the TOP of the slot when the active view
 				    opted into 'sidebar' placement; sectionLabel names the owning
-				    document when the registrant supplied one. */}
+				    document when the registrant supplied one. Collapsed rail renders
+				    icon-only entries (design-owner decision). */}
 				{sidebarViewMenu && (
 					<SidebarViewMenu
 						menu={sidebarViewMenu.menu}
 						activeId={sidebarViewMenu.activeId}
 						onSelect={sidebarViewMenu.onSelect}
 						sectionLabel={sidebarViewMenu.sectionLabel}
+						collapsed={collapsed}
 					/>
 				)}
 				{/* Legacy per-app sidebar component (unchanged mechanism). */}
 				{AppSidebar && <AppSidebar collapsed={collapsed} />}
-				{/* New opt-in app-declared sidebar content. */}
-				{sidebarContent}
+				{/* New opt-in app-declared sidebar content — free-form nodes cannot
+				    iconify, so they hide while the sidebar is collapsed. */}
+				{!collapsed && sidebarContent}
 			</div>
 
 			{/* ================================================================

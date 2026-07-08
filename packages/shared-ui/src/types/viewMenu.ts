@@ -38,6 +38,8 @@
 // ENTRY
 // =============================================================================
 
+import type { ReactNode } from 'react';
+
 /** One selectable entry in a view's sub-view menu. */
 export interface ViewMenuEntry {
 	/** Stable identifier for the entry; passed back through `onSelect`. */
@@ -48,6 +50,12 @@ export interface ViewMenuEntry {
 	count?: number;
 	/** 'error' renders the count badge in --rr-color-error. */
 	severity?: 'error';
+	/**
+	 * Optional icon shown when the sidebar renderer is collapsed to its icon
+	 * rail (design-owner decision: collapsed sidebars show icon-only entries).
+	 * Entries without an icon fall back to a first-letter glyph.
+	 */
+	icon?: ReactNode;
 }
 
 // =============================================================================

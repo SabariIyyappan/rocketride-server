@@ -37,6 +37,12 @@ export interface ISidebarViewMenuProps {
 	onSelect: (id: string) => void;
 	/** Section label above the menu, e.g. the owning document name. Optional. */
 	sectionLabel?: string;
+	/**
+	 * Collapsed (icon-rail) rendering: entries draw icon-only (the entry's
+	 * `icon`, or a first-letter glyph fallback) with the label as a tooltip,
+	 * the section label hidden, and count badges shown as a compact overlay.
+	 */
+	collapsed?: boolean;
 }
 
 // =============================================================================
@@ -89,6 +95,45 @@ const styles = {
 	label: {
 		flex: 1,
 	} as CSSProperties,
+
+	// Collapsed (icon-rail) row: square, centered icon target with the same
+	// active-pill treatment; the badge overlays the top-right corner.
+	itemCollapsed: (active: boolean, hovered: boolean): CSSProperties => ({
+		position: 'relative',
+		display: 'flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+		width: 36,
+		height: 36,
+		margin: '2px auto',
+		borderRadius: 7,
+		color: 'var(--rr-text-primary)',
+		cursor: 'pointer',
+		border: '1px solid transparent',
+		...(active
+			? {
+					background: 'color-mix(in srgb, var(--rr-brand) 10%, transparent)',
+					borderColor: 'color-mix(in srgb, var(--rr-brand) 55%, transparent)',
+			  }
+			: null),
+		...(!active && hovered ? { background: 'var(--rr-bg-list-hover)' } : null),
+	}),
+
+	// First-letter fallback glyph for entries that declare no icon.
+	letterGlyph: {
+		fontSize: 13,
+		fontWeight: 700,
+		lineHeight: 1,
+	} as CSSProperties,
+
+	// Compact badge overlay anchored to the icon's top-right corner.
+	badgeOverlay: {
+		position: 'absolute',
+		top: -4,
+		right: -4,
+		transform: 'scale(0.85)',
+		transformOrigin: 'top right',
+	} as CSSProperties,
 };
 
 // =============================================================================
@@ -101,18 +146,41 @@ const styles = {
  * @param props - {@link ISidebarViewMenuProps}.
  * @returns The sidebar menu element.
  */
-export function SidebarViewMenu({ menu, activeId, onSelect, sectionLabel }: ISidebarViewMenuProps): React.ReactElement {
+export function SidebarViewMenu({ menu, activeId, onSelect, sectionLabel, collapsed }: ISidebarViewMenuProps): React.ReactElement {
 	// Track the hovered entry so a non-active row can show the hover fill.
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
 
 	return (
 		<div style={styles.container}>
-			{/* Optional section header naming the owning document. */}
-			{sectionLabel && <div style={styles.sectionLabel}>{sectionLabel}</div>}
+			{/* Optional section header naming the owning document (expanded only). */}
+			{!collapsed && sectionLabel && <div style={styles.sectionLabel}>{sectionLabel}</div>}
 			{menu.entries.map((entry) => {
 				// Resolve per-row state for the composed style.
 				const isActive = entry.id === activeId;
 				const isHovered = entry.id === hoveredId;
+
+				// Collapsed icon rail: icon-only square with tooltip + badge overlay.
+				if (collapsed) {
+					return (
+						<div
+							key={entry.id}
+							title={entry.label}
+							style={styles.itemCollapsed(isActive, isHovered)}
+							onClick={() => onSelect(entry.id)}
+							onMouseEnter={() => setHoveredId(entry.id)}
+							onMouseLeave={() => setHoveredId(null)}
+						>
+							{/* Declared icon, or a first-letter glyph fallback. */}
+							{entry.icon ?? <span style={styles.letterGlyph}>{entry.label.charAt(0).toUpperCase()}</span>}
+							{entry.count != null && (
+								<span style={styles.badgeOverlay}>
+									<ViewMenuBadge count={entry.count} severity={entry.severity} />
+								</span>
+							)}
+						</div>
+					);
+				}
+
 				return (
 					<div
 						key={entry.id}
