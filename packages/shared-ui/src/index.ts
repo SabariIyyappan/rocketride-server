@@ -124,3 +124,20 @@ export { Chip, ChipAdd } from './components/chip/Chip';
 export type { IChipProps, IChipAddProps } from './components/chip/Chip';
 export { DropZone } from './components/drop-zone/DropZone';
 export type { IDropZoneProps } from './components/drop-zone/DropZone';
+
+// --- Stock composition components (style guide sections 5-6) ------------------
+export { ContentHeader } from './components/content-header/ContentHeader';
+export type { IContentHeaderProps } from './components/content-header/ContentHeader';
+export { Card } from './components/card/Card';
+export type { ICardProps } from './components/card/Card';
+export { MiniCard, MiniContainer } from './components/mini-card/MiniCard';
+export type { IMiniCardProps, IMiniContainerProps } from './components/mini-card/MiniCard';
+export { ConnectionCard, ConnectionCardAdd } from './components/connection-card/ConnectionCard';
+export type { IConnectionCardProps, IConnectionCardAddProps } from './components/connection-card/ConnectionCard';
+export { Section, LabelValue } from './components/section/Section';
+export type { ISectionProps, ILabelValueProps } from './components/section/Section';
+export { RocketRideMark } from './components/RocketRideMark';
+export type { IRocketRideMarkProps } from './components/RocketRideMark';
+
+// --- Shared value formatters -------------------------------------------------
+export { formatBytes, formatDate, formatDuration } from './utils/format';

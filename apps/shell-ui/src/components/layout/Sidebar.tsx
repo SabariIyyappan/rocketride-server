@@ -41,7 +41,7 @@ import type { ShellThemeConfig, ShellAccountConfig } from '../../workspace/types
 import { SidebarFooter } from 'shared/components/sidebar-footer/SidebarFooter';
 import type { SidebarFooterMenuItem } from 'shared/components/sidebar-footer/SidebarFooter';
 import { useSubscriptions } from '../../hooks/useSubscriptions';
-import RocketRideMark from '../../icons/RocketRideMark';
+import { RocketRideMark } from 'shared';
 import RocketRideWordmark from '../../icons/RocketRideWordmark';
 
 // =============================================================================
