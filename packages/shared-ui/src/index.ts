@@ -106,3 +106,21 @@ export { useFixedPopupPosition } from './hooks/useFixedPopupPosition';
 export { useAnnouncements } from './hooks/useAnnouncements';
 export type { Announcement } from './hooks/useAnnouncements';
 export { PopupRow } from './components/PopupRow';
+
+// --- Stock primitives (style guide section 6) --------------------------------
+export { Button } from './components/button/Button';
+export type { IButtonProps, ButtonVariant } from './components/button/Button';
+export { StatusBadge, StatusDot } from './components/status-badge/StatusBadge';
+export type { IStatusBadgeProps, IStatusDotProps, StatusVariant } from './components/status-badge/StatusBadge';
+export { EmptyState } from './components/empty-state/EmptyState';
+export type { IEmptyStateProps } from './components/empty-state/EmptyState';
+export { Banner } from './components/banner/Banner';
+export type { IBannerProps, BannerVariant } from './components/banner/Banner';
+export { InputField } from './components/input-field/InputField';
+export type { IInputFieldProps } from './components/input-field/InputField';
+export { ToggleGroup } from './components/toggle-group/ToggleGroup';
+export type { IToggleGroupProps, IToggleGroupOption } from './components/toggle-group/ToggleGroup';
+export { Chip, ChipAdd } from './components/chip/Chip';
+export type { IChipProps, IChipAddProps } from './components/chip/Chip';
+export { DropZone } from './components/drop-zone/DropZone';
+export type { IDropZoneProps } from './components/drop-zone/DropZone';
