@@ -142,6 +142,8 @@ export { ConnectionCard, ConnectionCardAdd } from './components/connection-card/
 export type { IConnectionCardProps, IConnectionCardAddProps } from './components/connection-card/ConnectionCard';
 export { Section, LabelValue } from './components/section/Section';
 export type { ISectionProps, ILabelValueProps } from './components/section/Section';
+export { DetailPanel } from './components/detail-panel/DetailPanel';
+export type { IDetailPanelProps } from './components/detail-panel/DetailPanel';
 export { SidebarViewMenu } from './components/view-menu/SidebarViewMenu';
 export type { ISidebarViewMenuProps } from './components/view-menu/SidebarViewMenu';
 export { ContentViewMenu } from './components/view-menu/ContentViewMenu';
