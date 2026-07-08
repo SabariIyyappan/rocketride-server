@@ -54,7 +54,7 @@
 //   switch is irrelevant.
 // =============================================================================
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ViewMenu } from 'shared';
 
@@ -277,14 +277,14 @@ export function useSidebarContent(content: ReactNode | null): void {
 
 	// Clear this instance's registration on unmount only (not on every change),
 	// so switching content never flashes an empty slot.
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const token = tokenRef.current;
 		return () => api.unregisterSidebarContent(token);
 	}, [api]);
 
 	// Sync the current content into the slot whenever it changes. The provider
 	// dedupes by node identity, so a stable node registers once.
-	useEffect(() => {
+	useLayoutEffect(() => {
 		api.registerSidebarContent(tokenRef.current, content ?? null);
 	}, [api, content]);
 }
@@ -313,13 +313,13 @@ export function useViewMenu(options: UseViewMenuOptions): void {
 	const stableSelect = useCallback((id: string) => onSelectRef.current(id), []);
 
 	// Clear this instance's registration on unmount only.
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const token = tokenRef.current;
 		return () => api.unregisterViewMenu(token);
 	}, [api]);
 
 	// Sync the current menu into the slot; the provider dedupes structurally.
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (menu) {
 			api.registerViewMenu(tokenRef.current, { menu, activeId, onSelect: stableSelect, sectionLabel });
 		} else {

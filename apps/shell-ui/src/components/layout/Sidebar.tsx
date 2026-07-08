@@ -41,6 +41,7 @@ import type { ShellThemeConfig, ShellAccountConfig } from '../../workspace/types
 import { SidebarFooter } from 'shared/components/sidebar-footer/SidebarFooter';
 import type { SidebarFooterMenuItem } from 'shared/components/sidebar-footer/SidebarFooter';
 import { useSubscriptions } from '../../hooks/useSubscriptions';
+import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import { RocketRideMark, SidebarViewMenu } from 'shared';
 import RocketRideWordmark from '../../icons/RocketRideWordmark';
 import { useHostChromeState } from './HostChromeContext';
@@ -387,11 +388,17 @@ const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, h
 
 	const showAppSwitcher = !hideAppSwitcher && appManifest.length > 1;
 
+	// Account management is a SaaS concept (cloud identity/org/billing): the
+	// overlay entry only appears when connected in cloud mode. OSS/local/onprem
+	// modes have no account backend, so the item is hidden entirely.
+	const { connectionMode } = useConnectionStatus();
+	const isCloudMode = connectionMode === 'cloud';
+
 	const footerMenuItems: SidebarFooterMenuItem[] = useMemo(() => {
 		const items: SidebarFooterMenuItem[] = [
 			{ id: 'home', label: 'Home', icon: BxHome, onClick: () => ConnectionManager.getInstance().emit('shell:switchApp', { appId: 'rocketride.home' }) },
-			{ id: 'account', label: 'Account', icon: BxUser, dividerBefore: true, onClick: () => onOverlay('account') },
-			{ id: 'environment', label: 'Variables', icon: BxLock, onClick: () => onOverlay('environment') },
+			...(isCloudMode ? [{ id: 'account', label: 'Account', icon: BxUser, dividerBefore: true, onClick: () => onOverlay('account') } satisfies SidebarFooterMenuItem] : []),
+			{ id: 'environment', label: 'Variables', icon: BxLock, dividerBefore: !isCloudMode, onClick: () => onOverlay('environment') },
 			// Settings is a global workspace view (shell "General" plus any installed app's
 			// settings), so it's always available. Per-app gating lives in SettingsPage.
 			{ id: 'settings', label: 'Settings', icon: BxCog, onClick: () => onOverlay('settings') },
@@ -432,7 +439,7 @@ const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, h
 		items.push({ id: 'logout', label: 'Log out', icon: BxExport, dividerBefore: true, onClick: () => account.onLogout?.() });
 
 		return items;
-	}, [themeOptions, prefs.theme, showAppSwitcher, appManifest, activeAppId, isOnDesktop, account, handleThemeSelect, onOverlay]);
+	}, [themeOptions, prefs.theme, showAppSwitcher, appManifest, activeAppId, isOnDesktop, account, handleThemeSelect, onOverlay, isCloudMode]);
 
 	// --- Don't render sidebar when not authenticated -------------------------
 

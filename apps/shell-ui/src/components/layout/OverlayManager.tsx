@@ -30,6 +30,7 @@ import { commonStyles } from 'shared/themes/styles';
 import { ConnectionManager } from '../../connection/connection';
 import AccountPage from '../../views/account/AccountPage';
 import SettingsPage from '../../views/settings/SettingsPage';
+import { OverlayViewMenuHost } from './OverlayViewMenuHost';
 import EnvironmentPage from '../../views/environment/EnvironmentPage';
 
 // =============================================================================
@@ -143,9 +144,14 @@ export const OverlayManager: React.FC<OverlayManagerProps> = ({ children }) => {
 				<div style={styles.backdrop} onClick={closeOverlay}>
 					<div style={styles.dialog} onClick={(e) => e.stopPropagation()}>
 						<button style={styles.dialogClose} onClick={closeOverlay}>✕</button>
-						{overlay === 'account' && <AccountPage />}
-						{overlay === 'settings' && <SettingsPage />}
-						{overlay === 'environment' && <EnvironmentPage />}
+						{/* Overlays get the same ViewMenu host as the client area: shared
+						    views publish their menu into the dialog's bottom tray instead
+						    of falling back to the legacy overlay pill bar. */}
+						<OverlayViewMenuHost>
+							{overlay === 'account' && <AccountPage />}
+							{overlay === 'settings' && <SettingsPage />}
+							{overlay === 'environment' && <EnvironmentPage />}
+						</OverlayViewMenuHost>
 					</div>
 				</div>
 			)}

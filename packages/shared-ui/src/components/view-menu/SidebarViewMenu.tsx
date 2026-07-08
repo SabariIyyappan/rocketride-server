@@ -96,6 +96,17 @@ const styles = {
 		flex: 1,
 	} as CSSProperties,
 
+	// Leading icon slot on expanded rows (17px box matching the shell nav icons).
+	itemIcon: {
+		display: 'inline-flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+		width: 17,
+		height: 17,
+		flexShrink: 0,
+		color: 'var(--rr-text-secondary)',
+	} as CSSProperties,
+
 	// Collapsed (icon-rail) row: square, centered icon target with the same
 	// active-pill treatment; the badge overlays the top-right corner.
 	itemCollapsed: (active: boolean, hovered: boolean): CSSProperties => ({
@@ -189,6 +200,8 @@ export function SidebarViewMenu({ menu, activeId, onSelect, sectionLabel, collap
 						onMouseEnter={() => setHoveredId(entry.id)}
 						onMouseLeave={() => setHoveredId(null)}
 					>
+						{/* Optional leading icon — same glyph the collapsed rail shows. */}
+						{entry.icon && <span style={styles.itemIcon}>{entry.icon}</span>}
 						<span style={styles.label}>{entry.label}</span>
 						{/* Right-aligned count badge when the entry declares a count. */}
 						{entry.count != null && <ViewMenuBadge count={entry.count} severity={entry.severity} />}
