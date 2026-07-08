@@ -11,12 +11,17 @@
  * padded body. Set `noBodyPadding` for content that fills the card edge-to-edge
  * (e.g. a DataTable).
  *
+ * Pass `onClick` to make the whole card interactive: it then shows a pointer
+ * cursor, a subtle hover treatment (border-color shifts to `--rr-border-hover`),
+ * and button semantics (role="button", Enter / Space keyboard activation).
+ * Without `onClick` the card renders as a plain static surface, unchanged.
+ *
  * Built on `commonStyles.card` / `cardBody`; the header treatment is composed on
  * top of `commonStyles.cardHeader` and overridden to the mockup spec (transparent
  * bar, bottom divider, 13.5/700 title) — see the note in the styles block.
  */
 
-import React, { CSSProperties, ReactNode } from 'react';
+import React, { CSSProperties, KeyboardEvent, ReactNode, useState } from 'react';
 import { commonStyles } from '../../themes/styles';
 
 // =============================================================================
@@ -33,6 +38,12 @@ export interface ICardProps {
 	children: ReactNode;
 	/** Drop the body padding (for tables and media that fill the card). */
 	noBodyPadding?: boolean;
+	/**
+	 * Makes the whole card clickable. When set, the card gains a pointer cursor,
+	 * a hover border-color shift, and button semantics (role="button", keyboard
+	 * Enter / Space activation). When omitted the card is a static surface.
+	 */
+	onClick?: () => void;
 }
 
 // =============================================================================
@@ -62,6 +73,15 @@ const styles = {
 	bodyNoPad: {
 		padding: 0,
 	} as CSSProperties,
+
+	// Interactive surface layered onto commonStyles.card when the card is
+	// clickable: a pointer cursor plus a hover-driven border-color shift. The
+	// hover is mouse-state driven because inline styles cannot express :hover.
+	// (Same border-override-on-top-of-shorthand pattern as SidebarViewMenu.)
+	interactive: (hovered: boolean): CSSProperties => ({
+		cursor: 'pointer',
+		...(hovered ? { borderColor: 'var(--rr-border-hover)' } : null),
+	}),
 };
 
 // =============================================================================
@@ -74,11 +94,43 @@ const styles = {
  * @param props - {@link ICardProps}.
  * @returns The card element.
  */
-export function Card({ header, headerActions, children, noBodyPadding }: ICardProps): React.ReactElement {
+export function Card({ header, headerActions, children, noBodyPadding, onClick }: ICardProps): React.ReactElement {
+	// Track hover so a clickable card can raise its border; stays false (and
+	// unused) for a static card, which attaches no mouse handlers.
+	const [hovered, setHovered] = useState(false);
+
 	// Only render the header row when there is a title or actions to show.
 	const showHeader = header != null || headerActions != null;
+	// A card is interactive only when the caller supplies an onClick handler.
+	const interactive = onClick != null;
+
+	/**
+	 * Activates the card from the keyboard when it is interactive: Enter or Space
+	 * fire the click handler, matching native button keys (Space's default page
+	 * scroll is suppressed).
+	 *
+	 * @param e - The keyboard event raised on the card element.
+	 */
+	const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
+		if (!onClick) return;
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			onClick();
+		}
+	};
+
 	return (
-		<div style={commonStyles.card}>
+		<div
+			// Interactive cards layer the pointer/hover treatment; static cards keep
+			// exactly commonStyles.card so their rendering is unchanged.
+			style={interactive ? { ...commonStyles.card, ...styles.interactive(hovered) } : commonStyles.card}
+			onClick={onClick}
+			onKeyDown={interactive ? handleKeyDown : undefined}
+			onMouseEnter={interactive ? () => setHovered(true) : undefined}
+			onMouseLeave={interactive ? () => setHovered(false) : undefined}
+			role={interactive ? 'button' : undefined}
+			tabIndex={interactive ? 0 : undefined}
+		>
 			{showHeader && (
 				<div style={styles.header}>
 					{header}

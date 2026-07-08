@@ -16,6 +16,10 @@
  * change resets to the first page. If the source exposes `subscribe`, a live
  * change silently re-runs the CURRENT query, preserving page / sort / search.
  *
+ * The footer (row count + page-size selector + pager) auto-hides when it would
+ * add nothing: it is shown only when a search term is active OR the total spans
+ * more than one page (`total > pageSize`). A single, unfiltered page hides it.
+ *
  * The container draws no outer border of its own: it drops cleanly inside a
  * Card (noBodyPadding) or stands alone.
  */
@@ -376,6 +380,11 @@ export function DataTable<Row>({
 	const isEmpty = !loading && total === 0;
 	// Total pages (at least one) for the pager.
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
+	// Footer visibility: a single unfiltered page needs neither a count nor a
+	// pager, so the whole footer hides when the result set fits one page AND no
+	// search term is active. Any committed search text or a multi-page total
+	// (total > pageSize) brings the footer back.
+	const showFooter = search.length > 0 || total > pageSize;
 
 	return (
 		<div style={styles.container}>
@@ -467,27 +476,30 @@ export function DataTable<Row>({
 						</tbody>
 					</table>
 
-					{/* Footer: row count + page-size selector + pager. */}
-					<div style={styles.footer}>
-						<span>{countText}</span>
-						{/* The whole pagination cluster hides when the source cannot paginate. */}
-						{caps.paginate && (
-							<>
-								<select
-									style={styles.pageSizeSelect}
-									value={pageSize}
-									onChange={(e) => handlePageSize(Number(e.target.value))}
-								>
-									{pageSizes.map((size) => (
-										<option key={size} value={size}>
-											{size} / page
-										</option>
-									))}
-								</select>
-								<Pager page={page} totalPages={totalPages} onPage={setPage} />
-							</>
-						)}
-					</div>
+					{/* Footer: row count + page-size selector + pager. Auto-hidden when a
+					    single unfiltered page makes it redundant (see showFooter). */}
+					{showFooter && (
+						<div style={styles.footer}>
+							<span>{countText}</span>
+							{/* The whole pagination cluster hides when the source cannot paginate. */}
+							{caps.paginate && (
+								<>
+									<select
+										style={styles.pageSizeSelect}
+										value={pageSize}
+										onChange={(e) => handlePageSize(Number(e.target.value))}
+									>
+										{pageSizes.map((size) => (
+											<option key={size} value={size}>
+												{size} / page
+											</option>
+										))}
+									</select>
+									<Pager page={page} totalPages={totalPages} onPage={setPage} />
+								</>
+							)}
+						</div>
+					)}
 				</>
 			)}
 		</div>
