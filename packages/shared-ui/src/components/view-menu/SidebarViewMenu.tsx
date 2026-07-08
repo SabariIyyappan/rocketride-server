@@ -70,11 +70,14 @@ const styles = {
 		fontSize: 13,
 		color: 'var(--rr-text-primary)',
 		cursor: 'pointer',
+		// Constant 1px border (transparent when inactive) so toggling the
+		// active pill never changes row height — no sibling reflow on select.
+		border: '1px solid transparent',
 		// Active: brand-tinted fill + brand-tinted border + bolder label.
 		...(active
 			? {
 					background: 'color-mix(in srgb, var(--rr-brand) 10%, transparent)',
-					border: '1px solid color-mix(in srgb, var(--rr-brand) 55%, transparent)',
+					borderColor: 'color-mix(in srgb, var(--rr-brand) 55%, transparent)',
 					fontWeight: 600,
 			  }
 			: null),
