@@ -88,6 +88,7 @@ export { useShellEvent } from './hooks/useShellEvent';
 
 // Connection-aware interval polling
 export { usePolling } from './hooks/usePolling';
+export type { IUsePollingOptions } from './hooks/usePolling';
 
 // Shared 3s dashboard snapshot + live activity events (module-level singleton)
 export { useDashboardData } from './hooks/useDashboardData';
