@@ -79,12 +79,10 @@ export class RemoteManager extends BaseManager {
 		}
 
 		// Cache server info if available. serverVersion is sent by newer servers
-		// but is not declared on the SDK's ConnectResult type, so read it via an
-		// untyped record view.
-		const serverVersion = (result as unknown as Record<string, unknown>).serverVersion as string | undefined;
-		if (serverVersion) {
+		// (older servers omit it — the field is optional on ConnectResult).
+		if (result.serverVersion) {
 			this.serverInfo = {
-				version: serverVersion,
+				version: result.serverVersion,
 				publishedAt: null,
 			};
 		}

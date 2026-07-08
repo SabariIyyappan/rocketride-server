@@ -5,7 +5,7 @@ import { commonStyles } from 'shared/themes/styles';
 // TYPES
 // =============================================================================
 
-interface ConfirmDialogProps {
+export interface ConfirmDialogProps {
 	title: string;
 	message: string;
 	confirmLabel?: string;

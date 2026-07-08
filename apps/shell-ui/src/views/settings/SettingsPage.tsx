@@ -41,7 +41,6 @@ import { useWorkspace } from '../../workspace/WorkspaceContext';
 import { useShellConnection } from '../../connection/ConnectionContext';
 import { ConnectionManager } from '../../connection/connection';
 import type { AppSettingDefinition } from '../../workspace/types';
-import type { ShellAppEntry } from 'shared';
 
 // =============================================================================
 // SHELL SETTINGS — general settings owned by the shell, not any specific app
@@ -402,9 +401,9 @@ const SettingsPage: React.FC = () => {
 	/** Opens the checkout modal via the shell:subscribe event. */
 	const handleSubscribe = useCallback(() => {
 		if (!pipeBuilderApp) return;
-		// shell-ui's AppManifestEntry and the shared ShellAppEntry are structurally
-		// divergent declarations of the same runtime manifest object.
-		ConnectionManager.getInstance().emit('shell:subscribe', { app: pipeBuilderApp as unknown as ShellAppEntry });
+		// The SDK AppManifestEntry structurally satisfies the minimal
+		// ShellAppEntry contract, so it is passed directly.
+		ConnectionManager.getInstance().emit('shell:subscribe', { app: pipeBuilderApp });
 	}, [pipeBuilderApp]);
 
 	// ── Services from cached catalog ─────────────────────────────────────

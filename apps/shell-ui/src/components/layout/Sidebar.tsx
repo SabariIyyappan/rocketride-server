@@ -82,7 +82,7 @@ export interface SidebarProps {
 /**
  * Props for the NavButton component.
  */
-interface NavButtonProps {
+export interface NavButtonProps {
 	/** Icon component to render. */
 	icon: IconComponent;
 	/** Text label shown when the sidebar is expanded. */

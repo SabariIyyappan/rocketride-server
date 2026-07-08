@@ -25,7 +25,7 @@
 // =============================================================================
 
 import { useMemo } from 'react';
-import type { AppManifestEntry } from '../workspace/types';
+import type { AppManifestEntry } from 'rocketride';
 import { useAuthUser } from './useAuthUser';
 
 // =============================================================================
@@ -59,9 +59,9 @@ export function useSubscriptions(): {
 	const identity = useAuthUser();
 
 	return useMemo(() => {
-		// The SDK's AppManifestEntry and shell-ui's workspace AppManifestEntry are
-		// structurally divergent declarations of the same runtime manifest objects.
-		const raw: AppManifestEntry[] = (identity?.apps ?? []) as unknown as AppManifestEntry[];
+		// ``identity.apps`` is already the SDK's AppManifestEntry[] (from
+		// ConnectResult.apps) — the true runtime shape of these desktop entries.
+		const raw: AppManifestEntry[] = identity?.apps ?? [];
 
 		// Build lookup maps for fast access
 		const statusMap = new Map<string, AppStatus>();

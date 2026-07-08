@@ -184,3 +184,12 @@ export { useAppComponent } from './lib/useAppComponent';
 // =============================================================================
 
 export * from './icons/BoxIcon';
+
+// =============================================================================
+// CURATED API SURFACE — versioned contract entry (see api.ts)
+// =============================================================================
+
+// One typed object bundling every shell-provided symbol apps consume, plus the
+// version marker. Frozen by `./builder shell:freeze` into packages/shell-api.
+export { getShellApi, SHELL_API_VERSION } from './api';
+export type { ShellApiShape } from './api';

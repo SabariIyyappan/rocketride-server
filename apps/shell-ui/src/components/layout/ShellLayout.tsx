@@ -48,7 +48,6 @@ import StatusBar from './StatusBar';
 import LoadingScreen from './LoadingScreen';
 import DebugPanel from './DebugPanel';
 import type { ShellConfig } from '../../workspace/types';
-import type { ShellAppEntry } from 'shared';
 import { commonStyles } from 'shared/themes/styles';
 
 // =============================================================================
@@ -258,12 +257,12 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 	useEffect(() => {
 		// When a logged-in user navigates to an app they haven't subscribed to,
 		// open the checkout flow automatically. Skip the default app (always accessible).
-		if (subGateActive) {
+		if (subGateActive && activeManifest) {
 			if (subGateTriggeredRef.current === activeAppId) return;
 			subGateTriggeredRef.current = activeAppId;
-			// shell-ui's AppManifestEntry and the shared ShellAppEntry are structurally
-			// divergent declarations of the same runtime manifest object.
-			ConnectionManager.getInstance().emit('shell:subscribe', { app: activeManifest as unknown as ShellAppEntry });
+			// AppManifestEntry structurally satisfies the minimal ShellAppEntry
+			// contract, so it is passed directly.
+			ConnectionManager.getInstance().emit('shell:subscribe', { app: activeManifest });
 		} else {
 			subGateTriggeredRef.current = null;
 		}

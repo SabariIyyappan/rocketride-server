@@ -146,7 +146,7 @@ function makeCopyAction() {
 // MODULE DEFINITION
 // =============================================================================
 
-module.exports = {
+const shellUiModule = {
 	name: 'shell-ui',
 	description: 'Shell Host Application',
 
@@ -196,3 +196,37 @@ module.exports = {
 		},
 	],
 };
+
+// =============================================================================
+// SHELL CONTRACT MODULE — `shell:*` action namespace
+// =============================================================================
+//
+// Registered as its own module so `./builder shell:freeze` resolves (the
+// builder derives the module name from the text before the colon). The registry
+// accepts an array of modules from one tasks.js file.
+// =============================================================================
+
+const shellContractModule = {
+	name: 'shell',
+	description: 'Shell API contract',
+
+	actions: [
+		{
+			// Freeze the shell-api contract: bundle src/api.ts into the next
+			// packages/shell-api/versions/vN and regenerate the conformance file.
+			// `--check` runs CI mode (no writes; fails on un-frozen drift).
+			name: 'shell:freeze',
+			action: () => ({
+				description: 'Freeze the shell-api contract',
+				run: async (ctx, task) => {
+					const script = path.join(APP_ROOT, 'scripts', 'freeze-shell-api.js');
+					const args = [script];
+					if (ctx.options.check) args.push('--check');
+					await execCommand('node', args, { task, cwd: APP_ROOT });
+				},
+			}),
+		},
+	],
+};
+
+module.exports = [shellUiModule, shellContractModule];

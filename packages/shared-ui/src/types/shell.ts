@@ -44,8 +44,15 @@ import type { CheckoutPlan } from '../modules/checkout/types';
  * Minimal app entry shape shared across hosts for event payloads.
  *
  * Both shell-ui and VSCode emit `shell:appsUpdated` and `shell:subscribe`
- * with app entries. This captures the common fields; hosts cast to their
- * concrete type (e.g. shell-ui's `AppManifestEntry`) for full access.
+ * with app entries. This captures only the fields every host guarantees, so
+ * each host's richer concrete manifest type (shell-ui's `AppManifestEntry`
+ * and the SDK's `AppManifestEntry`) structurally satisfies it and can be
+ * passed directly without a cast. Consumers that need host-specific fields
+ * narrow to their concrete manifest type.
+ *
+ * Deliberately has NO index signature: an index signature would force
+ * interface-typed manifest values (interfaces get no implicit index
+ * signature) to be cast, which is exactly the divergence this shape unifies.
  */
 export interface ShellAppEntry {
 	/** Unique app identifier (e.g. 'rocketride.home'). */
@@ -54,8 +61,6 @@ export interface ShellAppEntry {
 	name: string;
 	/** Optional description. */
 	description?: string;
-	/** Additional properties vary by host. */
-	[key: string]: unknown;
 }
 
 // =============================================================================
