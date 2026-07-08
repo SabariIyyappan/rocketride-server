@@ -136,6 +136,11 @@ export { ConnectionCard, ConnectionCardAdd } from './components/connection-card/
 export type { IConnectionCardProps, IConnectionCardAddProps } from './components/connection-card/ConnectionCard';
 export { Section, LabelValue } from './components/section/Section';
 export type { ISectionProps, ILabelValueProps } from './components/section/Section';
+export { SidebarViewMenu } from './components/view-menu/SidebarViewMenu';
+export type { ISidebarViewMenuProps } from './components/view-menu/SidebarViewMenu';
+export { ContentViewMenu } from './components/view-menu/ContentViewMenu';
+export type { IContentViewMenuProps } from './components/view-menu/ContentViewMenu';
+export type { ViewMenu, ViewMenuEntry } from './types/viewMenu';
 export { RocketRideMark } from './components/RocketRideMark';
 export type { IRocketRideMarkProps } from './components/RocketRideMark';
 
