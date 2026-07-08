@@ -63,6 +63,8 @@ export * from './components/BoxIcon';
 
 export { TabPanel } from './components/tab-panel/TabPanel';
 export type { ITabPanelTab, ITabPanelProps } from './components/tab-panel/TabPanel';
+export { TabPanelContent } from './components/tab-panel/TabPanelContent';
+export type { ITabPanelContentProps } from './components/tab-panel/TabPanelContent';
 
 // --- Sidebar footer ----------------------------------------------------------
 export { SidebarFooter } from './components/sidebar-footer/SidebarFooter';
@@ -148,6 +150,8 @@ export { SidebarViewMenu } from './components/view-menu/SidebarViewMenu';
 export type { ISidebarViewMenuProps } from './components/view-menu/SidebarViewMenu';
 export { ContentViewMenu } from './components/view-menu/ContentViewMenu';
 export type { IContentViewMenuProps } from './components/view-menu/ContentViewMenu';
+export { ViewMenuHostProvider, usePublishViewMenu, useViewMenuHostState } from './components/view-menu/ViewMenuHostContext';
+export type { IViewMenuPublication } from './components/view-menu/ViewMenuHostContext';
 export type { ViewMenu, ViewMenuEntry } from './types/viewMenu';
 export { RocketRideMark } from './components/RocketRideMark';
 export type { IRocketRideMarkProps } from './components/RocketRideMark';

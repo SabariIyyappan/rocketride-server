@@ -21,7 +21,10 @@
 import React, { useCallback, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { TabPanel } from '../../components/tab-panel/TabPanel';
+import { TabPanelContent } from '../../components/tab-panel/TabPanelContent';
+import { usePublishViewMenu } from '../../components/view-menu/ViewMenuHostContext';
 import type { ITabPanelTab, ITabPanelPanel } from '../../components/tab-panel/TabPanel';
+import type { ViewMenu } from '../../types/viewMenu';
 import { commonStyles } from '../../themes/styles';
 import { EnvScopeCard } from '../account/components/EnvironmentPanel';
 
@@ -243,6 +246,12 @@ const EnvironmentView: React.FC<EnvironmentViewProps> = ({
 	// ── Build tab definitions ──────────────────────────────────────────
 	const tabs: ITabPanelTab[] = slots.map((s) => ({ id: s.id, label: s.label }));
 
+	// ── Host ViewMenu (multi-slot only; single/empty slot has no sub-views) ──
+	// Only the multi-slot layout has a tab bar to defer to a host; single-slot
+	// renders cards directly and publishes nothing.
+	const viewMenu: ViewMenu | null = isSingle ? null : { entries: slots.map((s) => ({ id: s.id, label: s.label })) };
+	const hostPresent = usePublishViewMenu(viewMenu ? { menu: viewMenu, activeId: activeTab, onSelect: setActiveTab } : null);
+
 	const panels: Record<string, ITabPanelPanel> = {};
 	for (const slot of slots) {
 		panels[slot.id] = {
@@ -286,8 +295,11 @@ const EnvironmentView: React.FC<EnvironmentViewProps> = ({
 					onSaveEnv={onSaveEnv}
 					requiredKeys={requiredKeys}
 				/>
+			) : hostPresent ? (
+				// ── Multiple slots, host present — host renders the ViewMenu ──
+				<TabPanelContent panels={panels} activeId={activeTab} />
 			) : (
-				// ── Multiple slots — tab bar ────────────────────────────────
+				// ── Multiple slots — legacy tab bar (fallback) ──────────────
 				<TabPanel
 					tabs={tabs}
 					activeTab={activeTab}

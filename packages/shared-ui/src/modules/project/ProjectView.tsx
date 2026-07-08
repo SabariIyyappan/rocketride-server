@@ -18,6 +18,9 @@
 import React, { useState, useCallback, useRef, useMemo, CSSProperties } from 'react';
 
 import { TabPanel } from '../../components/tab-panel/TabPanel';
+import { TabPanelContent } from '../../components/tab-panel/TabPanelContent';
+import { usePublishViewMenu } from '../../components/view-menu/ViewMenuHostContext';
+import type { ViewMenu } from '../../types/viewMenu';
 import { useTraceState } from './hooks/useTraceState';
 import { useElapsedTimer } from './hooks/useElapsedTimer';
 import Canvas from '../../components/canvas';
@@ -353,6 +356,30 @@ const ProjectView: React.FC<IProjectViewProps> = ({ project, servicesJson, isCon
 	];
 	const tabs = allTabs;
 
+	// --- Host ViewMenu declaration (host renders; TabPanel is the fallback) ---
+	// Same entries/order as the fallback tabs; the Errors entry carries an
+	// error-severity count when there are any errors/warnings (hidden at zero, to
+	// match the fallback badge). Tokens has no count yet (no data — flagged).
+	const totalIssues = totalErrors + totalWarnings;
+	const viewMenu = useMemo<ViewMenu>(
+		() => ({
+			entries: [
+				{ id: 'design', label: isReadonly ? 'Design (Readonly)' : 'Design' },
+				{ id: 'parameters', label: 'Parameters' },
+				{ id: 'status', label: 'Status' },
+				{ id: 'tokens', label: 'Tokens' },
+				{ id: 'flow', label: 'Flow' },
+				{ id: 'trace', label: 'Trace' },
+				{ id: 'errors', label: 'Errors', ...(totalIssues > 0 ? { count: totalIssues, severity: 'error' as const } : {}) },
+			],
+		}),
+		[isReadonly, totalIssues]
+	);
+
+	// Publish the menu while a host is present; `hostPresent` decides whether the
+	// view draws its own TabPanel (fallback) or defers the tabs to the host.
+	const hostPresent = usePublishViewMenu({ menu: viewMenu, activeId: viewState.mode, onSelect: handleModeChange });
+
 	// --- Panels (only the active panel is mounted) ----------------------------
 
 	const handlePipelineAction = useCallback(
@@ -436,7 +463,13 @@ const ProjectView: React.FC<IProjectViewProps> = ({ project, servicesJson, isCon
 
 	return (
 		<div style={styles.container}>
-			<TabPanel tabs={tabs} activeTab={viewState.mode} onTabChange={handleModeChange} panels={panels} />
+			{/* Host present → host renders the ViewMenu, view renders only its panels.
+			    No host → the legacy TabPanel pill bar (fallback, pixel-identical). */}
+			{hostPresent ? (
+				<TabPanelContent panels={panels} activeId={viewState.mode} />
+			) : (
+				<TabPanel tabs={tabs} activeTab={viewState.mode} onTabChange={handleModeChange} panels={panels} />
+			)}
 			{!isConnected && (
 				<div style={styles.disconnectOverlay}>
 					<button type="button" style={styles.disconnectButton} disabled>

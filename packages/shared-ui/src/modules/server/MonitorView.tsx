@@ -19,7 +19,10 @@ import React, { useState, useMemo, CSSProperties } from 'react';
 import type { DashboardResponse, ActivityEvent } from './types';
 import { OverviewTab, ConnectionsTab, TasksTab, ActivityTab } from './components';
 import { TabPanel } from '../../components/tab-panel/TabPanel';
+import { TabPanelContent } from '../../components/tab-panel/TabPanelContent';
+import { usePublishViewMenu } from '../../components/view-menu/ViewMenuHostContext';
 import type { ITabPanelTab, ITabPanelPanel } from '../../components/tab-panel/TabPanel';
+import type { ViewMenu } from '../../types/viewMenu';
 import { commonStyles } from '../../themes/styles';
 
 // =============================================================================
@@ -107,6 +110,23 @@ const MonitorView: React.FC<IMonitorViewProps> = ({ data, events, isConnected, o
 		[data, events.length]
 	);
 
+	// Host ViewMenu declaration — same entries/counts as the fallback tabs. The
+	// host renders this; the TabPanel below is the provider-less fallback.
+	const viewMenu = useMemo<ViewMenu>(
+		() => ({
+			entries: [
+				{ id: 'overview', label: 'Overview' },
+				{ id: 'connections', label: 'Connections', ...(data ? { count: data.overview.totalConnections } : {}) },
+				{ id: 'tasks', label: 'Tasks', ...(data ? { count: data.overview.activeTasks } : {}) },
+				{ id: 'activity', label: 'Activity', ...(events.length > 0 ? { count: events.length } : {}) },
+			],
+		}),
+		[data, events.length]
+	);
+
+	// Publish while a host is present; `hostPresent` decides the fallback path.
+	const hostPresent = usePublishViewMenu({ menu: viewMenu, activeId: activeTab, onSelect: (id) => setActiveTab(id as TabId) });
+
 	const panels = useMemo<Record<string, ITabPanelPanel>>(() => {
 		if (!data) {
 			const loading = {
@@ -154,7 +174,13 @@ const MonitorView: React.FC<IMonitorViewProps> = ({ data, events, isConnected, o
 
 	return (
 		<div style={styles.root}>
-			<TabPanel tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as TabId)} panels={panels} />
+			{/* Host present → host renders the ViewMenu; view renders only its panels.
+			    No host → the legacy TabPanel pill bar (fallback, pixel-identical). */}
+			{hostPresent ? (
+				<TabPanelContent panels={panels} activeId={activeTab} />
+			) : (
+				<TabPanel tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as TabId)} panels={panels} />
+			)}
 			{!isConnected && (
 				<div style={styles.disconnectOverlay}>
 					<button type="button" style={styles.disconnectButton} disabled>

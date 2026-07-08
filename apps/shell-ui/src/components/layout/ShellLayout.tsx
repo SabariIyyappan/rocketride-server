@@ -43,14 +43,14 @@ import { ShellApiConfigProvider } from '../../connection/ShellApiConfigContext';
 import { getCommonKeys, resolveSettingsForApp } from '../../views/settings/settingsUtils';
 import { AppErrorBoundary } from './AppErrorBoundary';
 import { OverlayManager, useOverlay } from './OverlayManager';
-import { HostChromeProvider, useHostChromeState } from './HostChromeContext';
+import { HostChromeProvider, useHostChromeState, useViewMenu } from './HostChromeContext';
 import Sidebar from './Sidebar';
 import StatusBar from './StatusBar';
 import LoadingScreen from './LoadingScreen';
 import DebugPanel from './DebugPanel';
 import type { ShellConfig } from '../../workspace/types';
 import { commonStyles } from 'shared/themes/styles';
-import { ContentViewMenu } from 'shared';
+import { ContentViewMenu, ViewMenuHostProvider, useViewMenuHostState } from 'shared';
 
 // =============================================================================
 // STYLES
@@ -304,6 +304,13 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 				{/* Client area */}
 				<div style={styles.overlayContainer}>
 					<div style={styles.clientArea}>
+						{/* Host the active app's ViewMenu: shared views published here are
+						    forwarded by the bridge into the shell's ViewMenu registration, so
+						    a view's sub-view tabs render as the bottom ContentViewMenu tray.
+						    Shell overlays (Account/Settings) render OUTSIDE this provider and
+						    keep their TabPanel fallback. */}
+						<ViewMenuHostProvider>
+						<ViewMenuHostBridge />
 						{activeApp?.components?.App ? (
 							<AppErrorBoundary key={activeAppId} appName={appName}>
 								<activeApp.components.App
@@ -328,6 +335,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 							// with no "Loading…" text frame flashing between them.
 							<LoadingScreen />
 						) : null}
+						</ViewMenuHostProvider>
 
 						{/* ContentViewMenu tray — 'bottom'-placement ViewMenu rendered
 						    at the base of the client area column, directly above the
@@ -381,6 +389,37 @@ const ContentViewMenuSlot: React.FC = () => {
 			onSelect={viewMenu.onSelect}
 		/>
 	);
+};
+
+// =============================================================================
+// VIEWMENU HOST BRIDGE — forwards shared publications into the shell ViewMenu
+// =============================================================================
+
+/** No-op select handler used while no menu is published (never invoked). */
+const NOOP_SELECT = (): void => {};
+
+/**
+ * Bridges the shared {@link ViewMenuHostProvider} to the shell's host-chrome
+ * ViewMenu registration. Shared views (rocket-ui's ProjectView, monitor-ui's
+ * MonitorView, ...) call `usePublishViewMenu` to publish into the provider that
+ * wraps the client-area app; this bridge reads that publication and forwards it
+ * through {@link useViewMenu}, so the shell renders it with the stock renderer
+ * (the bottom ContentViewMenu tray by default). Publishing nothing withdraws the
+ * shell ViewMenu. Renders no DOM — it only registers.
+ *
+ * @returns null (registration-only component).
+ */
+const ViewMenuHostBridge: React.FC = () => {
+	// The live publication from the client-area ViewMenuHostProvider.
+	const pub = useViewMenuHostState();
+	// Forward it into the shell's ViewMenu slot (null menu withdraws it).
+	useViewMenu({
+		menu: pub ? pub.menu : null,
+		activeId: pub ? pub.activeId : '',
+		onSelect: pub ? pub.onSelect : NOOP_SELECT,
+		sectionLabel: pub?.sectionLabel,
+	});
+	return null;
 };
 
 // =============================================================================

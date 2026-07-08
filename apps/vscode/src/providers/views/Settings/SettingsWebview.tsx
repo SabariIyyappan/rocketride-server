@@ -31,8 +31,9 @@ import { IntegrationSettings } from './IntegrationSettings';
 import { DeploySettings } from './DeploySettings';
 import { MessageDisplay } from './MessageDisplay';
 import { commonStyles } from 'shared/themes/styles';
-import type { CheckoutPlan } from 'shared';
+import type { CheckoutPlan, ViewMenu } from 'shared';
 import { TabPanel } from 'shared/components/tab-panel/TabPanel';
+import { TabPanelContent, usePublishViewMenu } from 'shared';
 import type { ITabPanelTab, ITabPanelPanel } from 'shared/components/tab-panel/TabPanel';
 import type { ServiceStatus, DockerStatus, VersionOption } from '../components/panels/shared';
 
@@ -801,6 +802,11 @@ export const Settings: React.FC = () => {
 		[]
 	);
 
+	// Host ViewMenu declaration — same entries as the fallback tabs. The vscode
+	// host renders this as the bottom tray; the TabPanel below is the fallback.
+	const settingsMenu = useMemo<ViewMenu>(() => ({ entries: tabs.map((t) => ({ id: t.id, label: t.label })) }), [tabs]);
+	const hostPresent = usePublishViewMenu({ menu: settingsMenu, activeId: activeTab, onSelect: setActiveTab });
+
 	// ── Checkout callbacks (passed to CloudPanel) ──────────────────────
 	const handleFetchPlans = useCallback((): Promise<CheckoutPlan[]> => {
 		return new Promise((resolve, reject) => {
@@ -1003,8 +1009,12 @@ export const Settings: React.FC = () => {
 					</div>
 				</div>
 			)}
-			{/* ── Tab panel ─────────────────────────────────────────── */}
-			<TabPanel tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} panels={panels} />
+			{/* ── Tab panel (host renders the tray; TabPanel is the fallback) ── */}
+			{hostPresent ? (
+				<TabPanelContent panels={panels} activeId={activeTab} />
+			) : (
+				<TabPanel tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} panels={panels} />
+			)}
 		</div>
 	);
 };

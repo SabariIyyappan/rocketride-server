@@ -17,11 +17,14 @@
  *  - passing the results down as `IAccountViewProps`
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { TabPanel } from '../../components/tab-panel/TabPanel';
+import { TabPanelContent } from '../../components/tab-panel/TabPanelContent';
+import { usePublishViewMenu } from '../../components/view-menu/ViewMenuHostContext';
 import { commonStyles } from '../../themes/styles';
 import type { ITabPanelTab, ITabPanelPanel } from '../../components/tab-panel/TabPanel';
+import type { ViewMenu } from '../../types/viewMenu';
 import type { ConnectResult, ApiKeyRecord, OrgDetail, MemberRecord, TeamRecord, TeamDetail, TeamMemberRecord, AccountSection, ProfileUpdate } from './types';
 import type { BillingDetail, CreditBalance, TransactionsResult, UsageRollup } from '../billing/types';
 import type { ActiveTask } from '../billing/components/BillingDashboard';
@@ -694,6 +697,37 @@ const AccountView: React.FC<IAccountViewProps> = (props) => {
 		[subscriptions, keys, teams, members]
 	);
 
+	/**
+	 * Host ViewMenu declaration — same entries/counts as the fallback tabs, in
+	 * ViewMenu shape. The host renders this; the TabPanel below is the fallback.
+	 */
+	const activeKeyCount = keys.filter((k) => k.active).length;
+	const viewMenu = useMemo<ViewMenu>(
+		() => ({
+			entries: [
+				{ id: 'profile', label: 'Profile' },
+				{ id: 'billing', label: 'Billing', ...(subscriptions.length > 0 ? { count: subscriptions.length } : {}) },
+				{ id: 'api-keys', label: 'API Keys', ...(activeKeyCount > 0 ? { count: activeKeyCount } : {}) },
+				{ id: 'organization', label: 'Organization' },
+				{ id: 'teams', label: 'Teams', ...(teams.length > 0 ? { count: teams.length } : {}) },
+				{ id: 'members', label: 'Members', ...(members.length > 0 ? { count: members.length } : {}) },
+			],
+		}),
+		[subscriptions.length, activeKeyCount, teams.length, members.length]
+	);
+
+	/** Selecting an entry switches the section and drops any team drill-down. */
+	const handleSelectSection = useCallback(
+		(id: string) => {
+			onSectionChange(id as AccountSection);
+			onActiveTeamIdChange(null);
+		},
+		[onSectionChange, onActiveTeamIdChange]
+	);
+
+	// Publish the menu while a host is present; `hostPresent` decides fallback.
+	const hostPresent = usePublishViewMenu({ menu: viewMenu, activeId: section, onSelect: handleSelectSection });
+
 	// =========================================================================
 	// PANELS
 	// =========================================================================
@@ -786,15 +820,13 @@ const AccountView: React.FC<IAccountViewProps> = (props) => {
 
 	return (
 		<div style={styles.root}>
-			<TabPanel
-				tabs={tabs}
-				activeTab={section}
-				onTabChange={(id) => {
-					onSectionChange(id as AccountSection);
-					onActiveTeamIdChange(null);
-				}}
-				panels={panels}
-			/>
+			{/* Host present → host renders the ViewMenu, view renders only its panels.
+			    No host (e.g. shell overlay) → the legacy TabPanel pill bar (fallback). */}
+			{hostPresent ? (
+				<TabPanelContent panels={panels} activeId={section} />
+			) : (
+				<TabPanel tabs={tabs} activeTab={section} onTabChange={handleSelectSection} panels={panels} />
+			)}
 
 			{/* Frosted-glass overlay with a disabled status button when disconnected. */}
 			{!isConnected && (

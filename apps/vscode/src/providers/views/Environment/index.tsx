@@ -29,10 +29,19 @@
  * element with `id="root"`).
  */
 
+import React from 'react';
 import { Environment } from './Environment';
+import { WebviewViewMenuHost } from '../WebviewViewMenuHost';
 import { mountComponent } from '../../../shared/util/mount';
 
+/** Environment webview wrapped so its ViewMenu renders as the vscode bottom tray. */
+const HostedEnvironment: React.FC = () => (
+	<WebviewViewMenuHost>
+		<Environment />
+	</WebviewViewMenuHost>
+);
+
 // Mount the Environment component into the webview DOM.
-mountComponent(Environment, 'Environment');
+mountComponent(HostedEnvironment, 'Environment');
 
 export default Environment;
