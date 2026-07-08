@@ -55,9 +55,12 @@ export type CaptureMode = 'posthog-js' | 'raw';
 /** SDK identity reported on every event. */
 export const RR_LIB = 'rocketride-js' as const;
 
-// NOTE: keep in sync with package.json `version`. A follow-up build step should
-// stamp this from package.json (or a generated version.ts); it is hardcoded here
-// only to keep this module import-free / zero-runtime.
+// Hardcoded (not read from package.json) to keep this module import-free /
+// zero-runtime — it's consumed by home-ui via a SOURCE alias, so it can't rely
+// on a build-time define, and by client-typescript's plain-tsc build, which has
+// no define step. Drift is guarded instead: `tests/analytics.version.test.ts`
+// fails CI if this doesn't equal package.json `version`, so a version bump can't
+// silently ship a stale `$lib_version`.
 export const RR_LIB_VERSION = '1.3.0' as const;
 
 /** Environment the caller supplies. Pure in => pure out. */
