@@ -49,6 +49,7 @@ import {
 	TextViewer, VideoViewer,
 } from './viewers';
 import type { ViewerId } from './viewerRegistry';
+import ExplorerSidebar from './ExplorerSidebar';
 
 // =============================================================================
 // BLOB URL REF-COUNTING
@@ -106,6 +107,25 @@ const styles = {
 		flexDirection: 'column',
 		gap: 12,
 	} as CSSProperties,
+	/** Title line inside the empty-group welcome message. */
+	welcomeTitle: {
+		fontSize: 16,
+		fontWeight: 600,
+	} as CSSProperties,
+	/** Per-tab file pane — kept mounted so per-viewer state survives tab switches. */
+	tabPane: {
+		flex: 1,
+		minHeight: 0,
+		flexDirection: 'column',
+	} as CSSProperties,
+	/** Active tab pane (visible). */
+	tabPaneVisible: {
+		display: 'flex',
+	} as CSSProperties,
+	/** Inactive tab pane (hidden but mounted). */
+	tabPaneHidden: {
+		display: 'none',
+	} as CSSProperties,
 };
 
 // =============================================================================
@@ -158,6 +178,10 @@ const ExplorerAppReady: React.FC<{ docs: Documents }> = ({ docs }) => {
 
 	return (
 		<div style={styles.container}>
+			{/* Register the file-tree Explorer into the shell sidebar frame.
+			    Renders null; mounted here so it shares the ready Documents
+			    singleton (active-file highlight, file actions). */}
+			<ExplorerSidebar />
 			<DocSplitLayout
 				docs={docs}
 				renderPane={(groupId: string) => {
@@ -181,7 +205,7 @@ const ExplorerAppReady: React.FC<{ docs: Documents }> = ({ docs }) => {
 							<div style={styles.content}>
 								{group.editorIds.length === 0 ? (
 									<div style={styles.welcome}>
-										<div style={{ fontSize: 16, fontWeight: 600 }}>File Explorer</div>
+										<div style={styles.welcomeTitle}>File Explorer</div>
 										<div>Open a file from the sidebar to view its contents.</div>
 									</div>
 								) : (
@@ -192,12 +216,7 @@ const ExplorerAppReady: React.FC<{ docs: Documents }> = ({ docs }) => {
 										return (
 											<div
 												key={editorId}
-												style={{
-													display: isActive ? 'flex' : 'none',
-													flex: 1,
-													minHeight: 0,
-													flexDirection: 'column',
-												}}
+												style={{ ...styles.tabPane, ...(isActive ? styles.tabPaneVisible : styles.tabPaneHidden) }}
 											>
 												<FilePane
 													docs={docs}
