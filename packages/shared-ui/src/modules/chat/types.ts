@@ -77,3 +77,14 @@ export interface TextResult {
 	text: string;
 	key: string;
 }
+
+// =============================================================================
+// LAYOUT CONSTANTS
+// =============================================================================
+
+/**
+ * Maximum width of the chat column. The message thread and the input row share
+ * this single constant so the responses always align with the entry bar
+ * (design-owner requirement: responses must not render wider than the input).
+ */
+export const CHAT_COLUMN_MAX_WIDTH = 720;

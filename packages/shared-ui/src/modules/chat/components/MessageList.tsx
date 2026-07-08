@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useRef, useMemo, useState, type CSSProperties } from 'react';
-import type { ChatMessage } from '../types';
+import { ChatMessage, CHAT_COLUMN_MAX_WIDTH } from '../types';
 import { MessageBubble } from './MessageBubble';
 import { TypingIndicator } from './TypingIndicator';
 import { EmptyState } from '../../../components/empty-state/EmptyState';
@@ -30,6 +30,14 @@ const styles = {
 		minHeight: 0,
 		scrollbarWidth: 'thin' as const,
 		scrollbarColor: 'var(--rr-bg-scrollbar-thumb) transparent',
+	} as CSSProperties,
+
+	// Centered column shared with the input row: responses never render wider
+	// than the chat entry bar (CHAT_COLUMN_MAX_WIDTH keeps the two in lockstep).
+	column: {
+		maxWidth: CHAT_COLUMN_MAX_WIDTH,
+		width: '100%',
+		margin: '0 auto',
 	} as CSSProperties,
 
 	emptyWrap: {
@@ -178,9 +186,12 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isTyping, em
 
 	return (
 		<div style={styles.scroll} ref={scrollRef} onScroll={handleScroll}>
-			{items.map((item) => (item.kind === 'thinking-group' ? <ThinkingGroup key={`tg-${item.id}`} messages={item.messages} /> : <MessageBubble key={item.message.id} message={item.message} />))}
-			{isTyping && <TypingIndicator />}
-			<div ref={endRef} />
+			{/* Inner column mirrors the entry bar width so thread and input align. */}
+			<div style={styles.column}>
+				{items.map((item) => (item.kind === 'thinking-group' ? <ThinkingGroup key={`tg-${item.id}`} messages={item.messages} /> : <MessageBubble key={item.message.id} message={item.message} />))}
+				{isTyping && <TypingIndicator />}
+				<div ref={endRef} />
+			</div>
 		</div>
 	);
 };

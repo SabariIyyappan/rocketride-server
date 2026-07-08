@@ -15,6 +15,7 @@
  * `commonStyles.inputField` base the InputField wraps.
  */
 
+import { CHAT_COLUMN_MAX_WIDTH } from '../types';
 import React, { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { commonStyles } from '../../../themes/styles';
 import { Button } from '../../../components/button/Button';
@@ -35,7 +36,7 @@ const styles = {
 		display: 'flex',
 		alignItems: 'flex-end',
 		gap: 10,
-		maxWidth: 720,
+		maxWidth: CHAT_COLUMN_MAX_WIDTH,
 		margin: '0 auto',
 	} as CSSProperties,
 
