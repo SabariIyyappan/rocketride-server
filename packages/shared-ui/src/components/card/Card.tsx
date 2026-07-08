@@ -77,10 +77,16 @@ const styles = {
 	// Interactive surface layered onto commonStyles.card when the card is
 	// clickable: a pointer cursor plus a hover-driven border-color shift. The
 	// hover is mouse-state driven because inline styles cannot express :hover.
-	// (Same border-override-on-top-of-shorthand pattern as SidebarViewMenu.)
+	// All three border longhands are emitted in BOTH hover states so the style
+	// object's property set never changes across renders — conditionally adding
+	// a borderColor longhand over commonStyles.card's border shorthand made
+	// React's style diffing leave the hover color behind on mouse-out (the
+	// stuck-outline bug, fixed in SidebarViewMenu the same way).
 	interactive: (hovered: boolean): CSSProperties => ({
 		cursor: 'pointer',
-		...(hovered ? { borderColor: 'var(--rr-border-hover)' } : null),
+		borderWidth: 1,
+		borderStyle: 'solid',
+		borderColor: hovered ? 'var(--rr-border-hover)' : 'var(--rr-border)',
 	}),
 };
 

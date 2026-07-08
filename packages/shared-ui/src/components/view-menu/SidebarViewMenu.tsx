@@ -78,7 +78,12 @@ const styles = {
 		cursor: 'pointer',
 		// Constant 1px border (transparent when inactive) so toggling the
 		// active pill never changes row height — no sibling reflow on select.
-		border: '1px solid transparent',
+		// Longhands only: mixing the border shorthand with a borderColor
+		// override makes React's style diffing leave the active color behind
+		// when an item deactivates (the stuck-outline bug).
+		borderWidth: 1,
+		borderStyle: 'solid',
+		borderColor: 'transparent',
 		// Active: brand-tinted fill + brand-tinted border + bolder label.
 		...(active
 			? {
@@ -120,7 +125,10 @@ const styles = {
 		borderRadius: 7,
 		color: 'var(--rr-text-primary)',
 		cursor: 'pointer',
-		border: '1px solid transparent',
+		// Longhands only — see styles.item for why the shorthand is avoided.
+		borderWidth: 1,
+		borderStyle: 'solid',
+		borderColor: 'transparent',
 		...(active
 			? {
 					background: 'color-mix(in srgb, var(--rr-brand) 10%, transparent)',
