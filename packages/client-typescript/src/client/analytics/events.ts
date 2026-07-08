@@ -245,8 +245,26 @@ export interface EventProperties {
 	$pageview: { page: string };
 }
 
-/** Tuple helper for wrapping report()/capture() with correct arg inference. */
-export type EventArgs<E extends EventName> = EventProperties[E] extends NoProps ? [event: E, properties?: EventProperties[E]] : [event: E, properties: EventProperties[E]];
+/**
+ * Tuple helper for wrapping report()/capture() with correct arg inference.
+ * `properties` is optional when the event has NO required props — this covers
+ * both NoProps events (e.g. chat:open) AND events whose props are all optional
+ * (e.g. pipeline:stop, auth:login_success, checkout:start), which the older
+ * `extends NoProps` check missed.
+ */
+export type EventArgs<E extends EventName> = {} extends EventProperties[E]
+	? [event: E, properties?: EventProperties[E]]
+	: [event: E, properties: EventProperties[E]];
+
+// Compile-time completeness guard (type-only; fully erased at build). The forward
+// direction — every EVENTS value has an EventProperties entry — is enforced by the
+// EventProperties[E] indexed access in EventArgs. This closes the reverse gap: an
+// orphaned EventProperties key (left behind after renaming an event in EVENTS)
+// makes `keyof EventProperties` wider than `EventName`, so the conditional
+// resolves to `false` and violates `Assert<T extends true>`, failing the build.
+// Exported only so tsc counts it as used (noUnusedLocals); carries no runtime value.
+type Assert<T extends true> = T;
+export type AssertEventPropsComplete = Assert<[keyof EventProperties] extends [EventName] ? true : false>;
 
 // Event → surface (web / vscode / shared) is documented inline in the section
 // comments of EVENTS above; no runtime map is shipped.

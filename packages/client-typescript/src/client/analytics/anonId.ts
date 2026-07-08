@@ -31,7 +31,7 @@
 // server-side id per request and BLOCKS `identify()` — so home-ui must NOT
 // pass an anon id from here.
 //
-// SPLIT OF RESPONSIBILITY (keeps this module zero-runtime / env-agnostic):
+// SPLIT OF RESPONSIBILITY (keeps this module side-effect-free / env-agnostic):
 //   - This module OWNS id generation (`newAnonId`) and the get-or-create
 //     orchestration (`getOrCreateAnonId`).
 //   - Each consumer OWNS persistence by implementing the tiny `AnonIdStore`
@@ -41,6 +41,17 @@
 
 /** Stable key/filename consumers should use for the persisted anon id. */
 export const ANON_ID_KEY = 'rr_anon_id';
+
+/**
+ * Minimal structural shape of the Web Crypto API this module needs. Declared
+ * locally instead of using the DOM lib's `Crypto` type so the published `.d.ts`
+ * stays lib-agnostic — consumers compiling without the DOM lib (and with older
+ * `@types/node`) still resolve it. `globalThis.crypto` satisfies it structurally.
+ */
+export interface CryptoLike {
+	randomUUID?(): string;
+	getRandomValues(array: Uint8Array): Uint8Array;
+}
 
 /**
  * Generate a fresh anonymous id.
@@ -58,7 +69,7 @@ export const ANON_ID_KEY = 'rr_anon_id';
  * `cryptoRef` is injected (default `globalThis.crypto`) to keep the module
  * testable and to avoid a hard reference to a possibly-absent global.
  */
-export function newAnonId(cryptoRef: Crypto | undefined = globalThis.crypto): string {
+export function newAnonId(cryptoRef: CryptoLike | undefined = globalThis.crypto): string {
 	if (cryptoRef && typeof cryptoRef.randomUUID === 'function') {
 		return cryptoRef.randomUUID();
 	}
@@ -74,7 +85,7 @@ export function newAnonId(cryptoRef: Crypto | undefined = globalThis.crypto): st
  * runtime) but a CSPRNG still is. Sets the version (4) and variant (10xx) bits
  * per spec, then formats the 16 bytes as the canonical 8-4-4-4-12 hex string.
  */
-function uuidV4FromBytes(cryptoRef: Crypto): string {
+function uuidV4FromBytes(cryptoRef: CryptoLike): string {
 	const bytes = new Uint8Array(16);
 	cryptoRef.getRandomValues(bytes);
 	bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
@@ -107,7 +118,7 @@ export interface AnonIdStore {
  * use. This is the function VS Code / product code calls to obtain the
  * `distinct_id` for `client.report()`.
  */
-export function getOrCreateAnonId(store: AnonIdStore, cryptoRef?: Crypto): string {
+export function getOrCreateAnonId(store: AnonIdStore, cryptoRef?: CryptoLike): string {
 	const existing = store.get();
 	if (existing) {
 		return existing;

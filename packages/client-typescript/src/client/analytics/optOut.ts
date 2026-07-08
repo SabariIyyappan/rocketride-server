@@ -24,7 +24,7 @@
 // rocketride/analytics — shared opt-out contract
 // =============================================================================
 //
-// Zero-runtime & env-agnostic: this module NEVER touches `window`, `vscode`,
+// Side-effect-free & env-agnostic: this module NEVER touches `window`, `vscode`,
 // `process`, `localStorage`, or `crypto`. Every consumer reads its own
 // environment signals and passes them in. That keeps ONE opt-out concept
 // consistent across:

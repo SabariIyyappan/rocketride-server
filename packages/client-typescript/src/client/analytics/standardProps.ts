@@ -159,6 +159,10 @@ export function standardProps(env: AnalyticsEnv, mode: CaptureMode = 'raw'): Sta
  * OPTIONAL, IMPURE convenience. Mirrors the SDK's existing
  * `typeof window !== 'undefined'` heuristic. Callers that already know their
  * platform should pass it explicitly instead of calling this.
+ *
+ * NOTE: this NEVER returns 'vscode' — a VS Code extension host has no `window`
+ * so it reports 'node', and a webview reports 'web'. VS Code callers must pass
+ * `platform: 'vscode'` explicitly rather than rely on detection here.
  */
 export function detectPlatform(): Platform {
 	// eslint-disable-next-line no-restricted-globals
