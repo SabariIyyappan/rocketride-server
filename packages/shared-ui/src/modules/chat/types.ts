@@ -7,6 +7,8 @@
  * Type definitions for the chat module.
  */
 
+import type { ReactNode } from 'react';
+
 // =============================================================================
 // MESSAGE
 // =============================================================================
@@ -25,6 +27,10 @@ export interface ChatMessage {
 	resultKey?: string;
 	/** SSE event type — used to identify thinking-group status messages. */
 	sseType?: string;
+	/** Optional metadata line (e.g. "2,340 tokens · 1.8s") shown under the bubble content. */
+	meta?: string;
+	/** When true, the message renders as an in-thread error Banner instead of a bubble. */
+	isError?: boolean;
 }
 
 // =============================================================================
@@ -43,6 +49,12 @@ export interface IChatViewProps {
 	onSend: (text: string) => void;
 	/** Placeholder shown in the input when idle. Defaults to "Ask anything…". */
 	placeholder?: string;
+	/** Title for the EmptyState shown when the conversation has no messages. */
+	emptyTitle?: string;
+	/** Description for the EmptyState shown when the conversation has no messages. */
+	emptyDescription?: string;
+	/** Optional node rendered before the input field (reserved for future attachments). */
+	leadingInputSlot?: ReactNode;
 }
 
 // =============================================================================
