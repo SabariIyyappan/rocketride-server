@@ -157,6 +157,16 @@ def test_standard_props_omits_groups_key_when_absent():
     assert '$groups' not in props
 
 
+def test_standard_props_groups_filters_none_values():
+    props = standard_props(_base_env(groups={'app': 'a1', 'organization': None}), mode='posthog-js')
+    assert props['$groups'] == {'app': 'a1'}
+
+
+def test_standard_props_omits_groups_key_when_all_values_none():
+    props = standard_props(_base_env(groups={'app': None, 'organization': None}), mode='posthog-js')
+    assert '$groups' not in props
+
+
 # =========================================================================
 # events
 # =========================================================================

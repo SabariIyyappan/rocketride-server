@@ -136,4 +136,16 @@ describe('standardProps', () => {
 		const p = standardProps(env, 'posthog-js');
 		expect(p).not.toHaveProperty('$groups');
 	});
+
+	it('filters undefined values out of $groups', () => {
+		const p = standardProps({ ...env, groups: { app: 'a1', organization: undefined } }, 'posthog-js');
+		// toStrictEqual, not toEqual: toEqual treats an undefined-valued key as absent,
+		// which would let an unfiltered `organization: undefined` pass silently.
+		expect(p.$groups).toStrictEqual({ app: 'a1' });
+	});
+
+	it('omits the $groups key entirely when every group value is undefined', () => {
+		const p = standardProps({ ...env, groups: { app: undefined, organization: undefined } }, 'posthog-js');
+		expect(p).not.toHaveProperty('$groups');
+	});
 });
