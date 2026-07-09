@@ -146,6 +146,17 @@ def test_standard_props_raw_anonymous_sets_session_and_person_profile():
     assert props['$process_person_profile'] is False
 
 
+def test_standard_props_emits_groups_with_posthog_group_keys():
+    props = standard_props(_base_env(groups={'app': 'a1', 'organization': 'o1'}), mode='posthog-js')
+    # Pin the wire contract with hardcoded literal keys — do NOT derive from impl.
+    assert props['$groups'] == {'app': 'a1', 'organization': 'o1'}
+
+
+def test_standard_props_omits_groups_key_when_absent():
+    props = standard_props(_base_env(), mode='posthog-js')
+    assert '$groups' not in props
+
+
 # =========================================================================
 # events
 # =========================================================================

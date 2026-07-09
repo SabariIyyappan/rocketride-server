@@ -125,4 +125,15 @@ describe('standardProps', () => {
 		expect(p.$session_id).toBe('sess-1');
 		expect(p.$process_person_profile).toBe(false);
 	});
+
+	it('emits $groups with PostHog group keys when env.groups is populated', () => {
+		const p = standardProps({ ...env, groups: { app: 'a1', organization: 'o1' } }, 'posthog-js');
+		// Pin the wire contract with hardcoded literal keys — do NOT derive from impl.
+		expect(p.$groups).toEqual({ app: 'a1', organization: 'o1' });
+	});
+
+	it('omits the $groups key entirely when env.groups is absent', () => {
+		const p = standardProps(env, 'posthog-js');
+		expect(p).not.toHaveProperty('$groups');
+	});
 });
