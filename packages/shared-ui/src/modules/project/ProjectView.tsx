@@ -17,11 +17,10 @@
 
 import React, { useState, useCallback, useRef, useMemo, CSSProperties, ReactNode } from 'react';
 
-import { TabPanel } from '../../components/tab-panel/TabPanel';
 import { TabPanelContent } from '../../components/tab-panel/TabPanelContent';
 import { ContentHeader } from '../../components/content-header/ContentHeader';
 import { Button } from '../../components/button/Button';
-import { usePublishViewMenu } from '../../components/view-menu/ViewMenuHostContext';
+import { PageViewControl } from '../../components/page-view-control/PageViewControl';
 import type { ViewMenu } from '../../types/viewMenu';
 import { useTraceState } from './hooks/useTraceState';
 import { useElapsedTimer } from './hooks/useElapsedTimer';
@@ -188,6 +187,15 @@ const styles = {
 		...commonStyles.badge,
 		backgroundColor: 'var(--rr-color-warning)',
 		color: 'var(--rr-fg-button)',
+	} as CSSProperties,
+	// Fills the space below the top PageViewControl strip; TabPanelContent's
+	// 100%-height wrapper resolves against this definite flex box.
+	pageBody: {
+		display: 'flex',
+		flexDirection: 'column',
+		flex: 1,
+		minWidth: 0,
+		minHeight: 0,
 	} as CSSProperties,
 };
 
@@ -371,27 +379,9 @@ const ProjectView: React.FC<IProjectViewProps> = ({ project, documentTitle, serv
 	const totalErrors = Object.values(statusMap).reduce((sum, ts) => sum + (ts.errors?.length ?? 0), 0);
 	const totalWarnings = Object.values(statusMap).reduce((sum, ts) => sum + (ts.warnings?.length ?? 0), 0);
 
-	// --- Tab definitions -----------------------------------------------------
-
-	const allTabs = [
-		{ id: 'design', label: isReadonly ? 'Design (Readonly)' : 'Design' },
-		{ id: 'parameters', label: 'Parameters' },
-		{ id: 'status', label: 'Status' },
-		{ id: 'tokens', label: 'Tokens' },
-		{ id: 'flow', label: 'Flow' },
-		{ id: 'trace', label: 'Trace' },
-		{
-			id: 'errors',
-			label: 'Errors',
-			badge: totalErrors + totalWarnings > 0 ? String(totalErrors + totalWarnings) : undefined,
-		},
-	];
-	const tabs = allTabs;
-
-	// --- Host ViewMenu declaration (host renders; TabPanel is the fallback) ---
-	// Same entries/order as the fallback tabs; the Errors entry carries an
-	// error-severity count when there are any errors/warnings (hidden at zero, to
-	// match the fallback badge). Tokens has no count yet (no data — flagged).
+	// --- ViewMenu declaration (rendered by this view's own PageViewControl) ---
+	// The Errors entry carries an error-severity count when there are any
+	// errors/warnings (hidden at zero). Tokens has no count yet (no data).
 	const totalIssues = totalErrors + totalWarnings;
 	const viewMenu = useMemo<ViewMenu>(
 		() => ({
@@ -408,11 +398,7 @@ const ProjectView: React.FC<IProjectViewProps> = ({ project, documentTitle, serv
 		[isReadonly, totalIssues]
 	);
 
-	// Publish the menu while a host is present; `hostPresent` decides whether the
-	// view draws its own TabPanel (fallback) or defers the tabs to the host.
-	const hostPresent = usePublishViewMenu({ menu: viewMenu, activeId: viewState.mode, onSelect: handleModeChange });
-
-	// --- Panels (only the active panel is mounted) ----------------------------
+	// --- Panels (all mounted; inactive panels hidden) --------------------------
 
 	const handlePipelineAction = useCallback(
 		(action: 'run' | 'stop' | 'restart', source?: string) => {
@@ -521,13 +507,13 @@ const ProjectView: React.FC<IProjectViewProps> = ({ project, documentTitle, serv
 
 	return (
 		<div style={styles.container}>
-			{/* Host present → host renders the ViewMenu, view renders only its panels.
-			    No host → the legacy TabPanel pill bar (fallback, pixel-identical). */}
-			{hostPresent ? (
+			{/* Page strip — the view renders its own tabs at the very top, above
+			    any ContentHeader (the title lives inside each page, below it). */}
+			<PageViewControl menu={viewMenu} activeId={viewState.mode} onSelect={handleModeChange} />
+			{/* Page bodies fill the space below the strip. */}
+			<div style={styles.pageBody}>
 				<TabPanelContent panels={panels} activeId={viewState.mode} />
-			) : (
-				<TabPanel tabs={tabs} activeTab={viewState.mode} onTabChange={handleModeChange} panels={panels} />
-			)}
+			</div>
 			{!isConnected && (
 				<div style={styles.disconnectOverlay}>
 					<button type="button" style={styles.disconnectButton} disabled>

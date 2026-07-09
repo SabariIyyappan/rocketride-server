@@ -41,7 +41,7 @@ import type { ShellThemeConfig, ShellAccountConfig } from '../../workspace/types
 import { SidebarFooter } from 'shared/components/sidebar-footer/SidebarFooter';
 import type { SidebarFooterMenuItem } from 'shared/components/sidebar-footer/SidebarFooter';
 import { useSubscriptions } from '../../hooks/useSubscriptions';
-import { RocketRideMark, SidebarViewMenu } from 'shared';
+import { RocketRideMark, SidebarCollapsedProvider } from 'shared';
 import RocketRideWordmark from '../../icons/RocketRideWordmark';
 import { useHostChromeState } from './HostChromeContext';
 
@@ -128,8 +128,9 @@ export const NavButton: React.FC<NavButtonProps> = ({ icon: Icon, label, isActiv
 				padding: collapsed ? 0 : '0 10px', margin: collapsed ? '0 auto' : 0,
 				borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13,
 				fontWeight: isActive ? 600 : 400,
-				// Active rows use the blue list-selection tokens (design-owner
-				// preference, matching Explorer's selected rows) — not brand orange.
+				// Active rows use the theme's standard list highlight
+				// (--rr-bg-list-active / --rr-fg-list-active): every theme maps it
+				// to its brand color + alternate foreground.
 				color: isActive ? 'var(--rr-fg-list-active)' : iconColor ?? 'var(--rr-text-secondary)',
 				background: isActive
 					? 'var(--rr-bg-list-active)'
@@ -305,19 +306,16 @@ const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, h
 
 	const AppSidebar = loadedApps[activeAppId]?.components?.Sidebar;
 
-	// --- Opt-in host-chrome registrations (new mechanism) --------------------
-	// `sidebarContent` is an app-declared node for the scrolling slot; `viewMenu`
-	// is the active view's declared menu. Only a 'sidebar'-placement menu renders
-	// here (a 'bottom' menu is rendered by the client area as the ContentViewMenu
-	// tray). Both are empty for every app that has not adopted the new API.
-	const { sidebarContent, viewMenu } = useHostChromeState();
-	const sidebarViewMenu = viewMenu && (viewMenu.menu.placement ?? 'bottom') === 'sidebar' ? viewMenu : null;
+	// --- Opt-in host-chrome registration (new mechanism) ---------------------
+	// `sidebarContent` is an app-declared node for the scrolling slot. Empty for
+	// every app that has not adopted the new API.
+	const { sidebarContent } = useHostChromeState();
 
 	// Whether the scrolling slot has anything to show. Drives self-hiding so the
 	// shell renders NO sidebar (and the client area spans full width) when an app
-	// provides neither a legacy sidebar component, registered content, nor a
-	// sidebar-placement ViewMenu — exactly today's behavior for such apps.
-	const hasSlotContent = !!AppSidebar || sidebarContent != null || !!sidebarViewMenu;
+	// provides neither a legacy sidebar component nor registered content —
+	// exactly today's behavior for such apps.
+	const hasSlotContent = !!AppSidebar || sidebarContent != null;
 
 	// --- Collapse toggle -----------------------------------------------------
 
@@ -521,24 +519,15 @@ const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, h
 			    APP SIDEBAR CONTENT SLOT — scrolls between fixed header/footer
 			    ================================================================ */}
 			<div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', minHeight: 0 }}>
-				{/* Stock SidebarViewMenu at the TOP of the slot when the active view
-				    opted into 'sidebar' placement; sectionLabel names the owning
-				    document when the registrant supplied one. Collapsed rail renders
-				    icon-only entries (design-owner decision). */}
-				{sidebarViewMenu && (
-					<SidebarViewMenu
-						menu={sidebarViewMenu.menu}
-						activeId={sidebarViewMenu.activeId}
-						onSelect={sidebarViewMenu.onSelect}
-						sectionLabel={sidebarViewMenu.sectionLabel}
-						collapsed={collapsed}
-					/>
-				)}
 				{/* Legacy per-app sidebar component (unchanged mechanism). */}
 				{AppSidebar && <AppSidebar collapsed={collapsed} />}
-				{/* New opt-in app-declared sidebar content — free-form nodes cannot
-				    iconify, so they hide while the sidebar is collapsed. */}
-				{!collapsed && sidebarContent}
+				{/* Opt-in app-declared sidebar content — rendered ALWAYS, including
+				    while collapsed to the icon rail. The provider exposes the
+				    collapsed flag; each component inside decides its collapsed form
+				    (SidebarMenu iconifies, free-form content returns null). */}
+				<SidebarCollapsedProvider value={collapsed}>
+					{sidebarContent}
+				</SidebarCollapsedProvider>
 			</div>
 
 			{/* ================================================================

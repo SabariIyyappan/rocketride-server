@@ -6,17 +6,9 @@
 // Make sure react is setup prior to loading shared-ui components
 import './setup.react';
 
-import React from 'react';
 import { Project } from './Project';
-import { WebviewViewMenuHost } from '../WebviewViewMenuHost';
 import { mountComponent } from '../../../shared/util/mount';
 
-/** Project webview wrapped so its ViewMenu renders as the vscode bottom tray. */
-const HostedProject: React.FC = () => (
-	<WebviewViewMenuHost>
-		<Project />
-	</WebviewViewMenuHost>
-);
-
-mountComponent(HostedProject, 'PageProject');
+// Mount the Project view directly — it renders its own PageViewControl strip.
+mountComponent(Project, 'PageProject');
 export default Project;

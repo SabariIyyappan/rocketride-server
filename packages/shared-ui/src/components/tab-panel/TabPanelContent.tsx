@@ -4,29 +4,22 @@
 // =============================================================================
 
 /**
- * TabPanelContent — the panel stack of a {@link TabPanel} WITHOUT its pill bar.
+ * TabPanelContent — the page-body stack below a view's PageViewControl strip.
  *
- * When a host renders a view's menu elsewhere (the vscode bottom tray or the
- * shell-ui ContentViewMenu) the view no longer draws its own {@link TabPanel}
- * pill bar — but it still needs to render exactly the same panel stack. This
- * component renders that stack alone: every panel is mounted (so state such as
- * a canvas's viewport survives switches) and all but the active one are hidden
- * with `display: none`, identical to {@link TabPanel}'s panel region.
+ * A view with sub-views renders the stock PageViewControl strip at the top of
+ * its content column and this component for the page bodies beneath it. Every
+ * panel is mounted (so state such as a canvas's viewport survives switches)
+ * and all but the active one are hidden with `display: none`.
  */
 
 import React, { CSSProperties } from 'react';
-import type { ITabPanelPanel } from './TabPanel';
 
 // =============================================================================
 // STYLES
 // =============================================================================
-//
-// These MUST match TabPanel's `wrapper` and `panel` styles so a host-rendered
-// view's content is pixel-identical to the fallback path.
-// =============================================================================
 
 const styles = {
-	// Full-size relative wrapper — the same box TabPanel uses behind its bar.
+	// Full-size relative wrapper around the panel stack.
 	wrapper: {
 		position: 'relative',
 		width: '100%',
@@ -45,6 +38,12 @@ const styles = {
 // =============================================================================
 // TYPES
 // =============================================================================
+
+/** One page body in the stack, keyed by its entry id in the panels map. */
+export interface ITabPanelPanel {
+	/** The panel's rendered content. */
+	content: React.ReactNode;
+}
 
 /** Props for the {@link TabPanelContent} component. */
 export interface ITabPanelContentProps {

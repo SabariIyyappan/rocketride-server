@@ -25,9 +25,9 @@
 // =============================================================================
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useShellConnection, useSidebarContent } from 'shell-ui';
-import { Explorer, BxDownload, BxDockLeft } from 'shared';
+import { Explorer, BxDownload, BxDockLeft, useSidebarCollapsed } from 'shared';
 import type { ExplorerEntry, ExplorerConfig, ExplorerFileAction, IVirtualFileSystem } from 'shared';
 import { getDocs } from './docs';
 import { getMediaInfo } from './mediaTypes';
@@ -75,6 +75,23 @@ const styles = {
 };
 
 // =============================================================================
+// COLLAPSED GATE
+// =============================================================================
+
+/**
+ * Root gate for the registered sidebar node. The shell renders registered
+ * sidebar content even while the sidebar is collapsed to its icon rail; this
+ * free-form file-tree content has no icon-rail form (a future per-app design
+ * task), so the gate reads the shell-provided collapsed flag and renders
+ * nothing while collapsed — preserving the previous look.
+ */
+const SidebarCollapsedGate: React.FC<{ children: ReactNode }> = ({ children }) => {
+	// Collapsed flag provided by the shell around the sidebar slot.
+	const collapsed = useSidebarCollapsed();
+	return collapsed ? null : <>{children}</>;
+};
+
+// =============================================================================
 // COMPONENT
 // =============================================================================
 
@@ -85,7 +102,7 @@ const styles = {
  * file-tree Explorer node and publishes it into the shell sidebar's scrolling
  * slot via useSidebarContent(), so it composes with the shell's fixed
  * header/footer. Renders null itself; mounted by ExplorerApp (not the legacy
- * components.Sidebar slot). The shell frame owns the collapse behaviour and
+ * components.Sidebar slot). The registered node's root SidebarCollapsedGate
  * hides this free-form content while the sidebar is collapsed. Files open in
  * the Documents tab system on click.
  */
@@ -337,8 +354,9 @@ const ExplorerSidebar: React.FC = () => {
 		</div>
 	);
 
-	// Publish to the shell sidebar slot; withdrawn automatically on unmount.
-	useSidebarContent(content);
+	// Publish to the shell sidebar slot (behind the collapse gate); withdrawn
+	// automatically on unmount.
+	useSidebarContent(<SidebarCollapsedGate>{content}</SidebarCollapsedGate>);
 
 	// Registration-only component — nothing rendered inline.
 	return null;

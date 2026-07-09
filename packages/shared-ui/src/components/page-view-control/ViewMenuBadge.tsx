@@ -4,12 +4,12 @@
 // =============================================================================
 
 /**
- * ViewMenuBadge — the internal count badge shared by both ViewMenu renderers.
+ * ViewMenuBadge — the internal count badge shared by both ViewMenu components.
  *
- * A small rounded pill showing a numeric count. Both the {@link SidebarViewMenu}
- * and the {@link ContentViewMenu} render the exact same badge, so it lives here
- * once and is imported by each renderer. Not part of the shared-ui public
- * surface — it is an internal building block of the view-menu components.
+ * A small rounded pill showing a numeric count. Both the {@link PageViewControl}
+ * and the {@link SidebarMenu} render the exact same badge, so it lives here
+ * once and is imported by each component. Not part of the shared-ui public
+ * surface — it is an internal building block of the two menu components.
  *
  * Two treatments, keyed by the entry's optional `severity`:
  * - neutral (default): `--rr-bg-widget-header` fill, `--rr-text-secondary` text.

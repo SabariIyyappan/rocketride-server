@@ -23,8 +23,8 @@
 // =============================================================================
 // FROZEN shell-api contract — ShellApiV1 — never edit by hand
 // =============================================================================
-// Generated:     2026-07-08T04:20:39.759Z
-// Source commit: 9a935a19ce8aac81f81fdfbf9ae21e67831e4f11
+// Generated:     2026-07-09T04:12:41.052Z
+// Source commit: 636872e3f8b5669af04bbf9f1f86eccf7228aa1b
 // Generator:     dts-bundle-generator@9.5.1
 // Produced by:   ./builder shell:freeze
 // =============================================================================
@@ -3873,13 +3873,17 @@ export interface ViewMenuEntry {
     count?: number;
     /** 'error' renders the count badge in --rr-color-error. */
     severity?: "error";
+    /**
+     * Optional icon shown when a SidebarMenu is collapsed to its icon rail
+     * (design-owner decision: collapsed sidebars show icon-only entries).
+     * Entries without an icon fall back to a first-letter glyph.
+     */
+    icon?: ReactNode;
 }
-/** Declared once per complex view; the host renders it. Views never draw their own tabs. */
+/** The entry list consumed by PageViewControl and SidebarMenu. */
 export interface ViewMenu {
     /** Ordered list of selectable sub-view entries. */
     entries: ViewMenuEntry[];
-    /** Where the menu renders in shell-ui. vscode always uses 'bottom'. Default: 'bottom'. */
-    placement?: "bottom" | "sidebar";
 }
 /**
  * The full public API surface of the workspace context — consumed by any
@@ -3944,7 +3948,18 @@ declare function useSubscriptions(): {
     /** Quick lookup: what's this app's appStatus? */
     getStatus: (appId: string) => AppStatus | undefined;
 };
-declare function usePolling(fetcher: () => void | Promise<void>, interval: number): void;
+interface IUsePollingOptions {
+    /**
+     * Connection gate for the interval.
+     * - 'shell' (default): poll only while the shell's global connection is up —
+     *   right for anything fetched through the shell's RocketRide client.
+     * - 'none': poll unconditionally — for apps that talk to their own sockets
+     *   (e.g. models-ui's model-server telemetry, which runs unauthenticated
+     *   and must keep ticking while the shell is disconnected).
+     */
+    gate?: "shell" | "none";
+}
+declare function usePolling(fetcher: () => void | Promise<void>, interval: number, options?: IUsePollingOptions): void;
 /** Data returned by the useDashboardData hook. */
 export interface DashboardData {
     /** Latest dashboard snapshot, or null if not yet loaded. */
@@ -3959,25 +3974,7 @@ declare function useConnectionStatus(): ConnectionStatus;
 declare function useShellApiConfig(): ShellApiConfig;
 declare function useShellEvents(iframeRef: React$1.RefObject<HTMLIFrameElement>): void;
 declare function useAppComponent(appId: string, componentName: string): React$1.ComponentType<any> | null;
-/**
- * Options accepted by {@link useViewMenu}.
- *
- * A single options object (rather than positional args) so the optional
- * `sectionLabel` — used only by the sidebar renderer — reads clearly at the
- * call site and the shape can grow without breaking callers.
- */
-export interface UseViewMenuOptions {
-    /** The declared menu, or `null` to register nothing (e.g. no open document). */
-    menu: ViewMenu | null;
-    /** Id of the currently active entry. */
-    activeId: string;
-    /** Fired with an entry id when the user selects it. */
-    onSelect: (id: string) => void;
-    /** Section label shown above the sidebar renderer (e.g. the owning document title). */
-    sectionLabel?: string;
-}
 declare function useSidebarContent(content: React$1.ReactNode | null): void;
-declare function useViewMenu(options: UseViewMenuOptions): void;
 declare function getClient(): RocketRideClient | null;
 /**
  * Options for ConnectionManager.initialize().
@@ -4593,6 +4590,14 @@ export interface SidebarProps {
     hideAppSwitcher?: boolean;
     /** Callback to open a shell overlay (account, settings, environment). */
     onOverlay: (overlay: "account" | "settings" | "environment") => void;
+    /**
+     * Server-probed edition flag (the 'saas' capability from the bootstrap
+     * probe). Gates SaaS-only footer items — the Account overlay has no
+     * backend on OSS/local servers, so the item is hidden there. NOTE: the
+     * connection mode is NOT a valid signal here (it defaults to 'cloud'
+     * regardless of the server edition).
+     */
+    isSaas?: boolean;
 }
 /**
  * Props for the NavButton component.
@@ -4741,7 +4746,6 @@ export declare const shellApi: {
     readonly useShellApiConfig: typeof useShellApiConfig;
     readonly useAppComponent: typeof useAppComponent;
     readonly useSidebarContent: typeof useSidebarContent;
-    readonly useViewMenu: typeof useViewMenu;
     readonly useClickOutside: typeof useClickOutside;
     readonly useFixedPopupPosition: typeof useFixedPopupPosition;
     readonly getClient: typeof getClient;

@@ -21,19 +21,10 @@
 // SOFTWARE.
 // =============================================================================
 
-import React from 'react';
 import { Settings } from './SettingsWebview';
-import { WebviewViewMenuHost } from '../WebviewViewMenuHost';
 import { mountComponent } from '../../../shared/util/mount';
 
-/** Settings webview wrapped so its ViewMenu renders as the vscode bottom tray. */
-const HostedSettings: React.FC = () => (
-	<WebviewViewMenuHost>
-		<Settings />
-	</WebviewViewMenuHost>
-);
-
-// Mount the Settings component
-mountComponent(HostedSettings, 'Settings');
+// Mount the Settings component directly — it renders its own PageViewControl strip.
+mountComponent(Settings, 'Settings');
 
 export default Settings;

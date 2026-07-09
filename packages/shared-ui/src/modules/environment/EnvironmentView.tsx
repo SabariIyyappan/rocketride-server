@@ -12,18 +12,18 @@
  * client calls in shell-ui, postMessage bridge in VS Code).
  *
  * Rendering modes:
- *   - Single slot: no tab bar, renders scope cards directly
- *   - Multiple slots: TabPanel with a pill per slot (e.g. Development / Deployment)
+ *   - Single slot: no tab strip, renders scope cards directly
+ *   - Multiple slots: PageViewControl strip with a tab per slot
+ *     (e.g. Development / Deployment)
  *   - Per slot: OSS server → single "Server" card; SaaS → Org/Team/User cards
  *   - Disconnected slot → empty-state message
  */
 
 import React, { useCallback, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { TabPanel } from '../../components/tab-panel/TabPanel';
 import { TabPanelContent } from '../../components/tab-panel/TabPanelContent';
-import { usePublishViewMenu } from '../../components/view-menu/ViewMenuHostContext';
-import type { ITabPanelTab, ITabPanelPanel } from '../../components/tab-panel/TabPanel';
+import { PageViewControl } from '../../components/page-view-control/PageViewControl';
+import type { ITabPanelPanel } from '../../components/tab-panel/TabPanelContent';
 import type { ViewMenu } from '../../types/viewMenu';
 import { commonStyles } from '../../themes/styles';
 import { EnvScopeCard } from '../account/components/EnvironmentPanel';
@@ -89,15 +89,27 @@ const styles = {
 		...commonStyles.columnFill,
 	} as CSSProperties,
 
-	/** Content area when inside a TabPanel. */
+	/** Content area when below the PageViewControl strip (multi-slot mode). */
 	content: {
 		...commonStyles.tabContent,
 	} as CSSProperties,
 
-	/** Content area in single-slot mode (no TabPanel / no pill bar). */
+	/** Content area in single-slot mode (no tab strip). */
 	contentSingle: {
 		...commonStyles.tabContent,
 		paddingTop: 30,
+	} as CSSProperties,
+
+	/**
+	 * Fills the space below the top PageViewControl strip; TabPanelContent's
+	 * 100%-height wrapper resolves against this definite flex box.
+	 */
+	pageBody: {
+		display: 'flex',
+		flexDirection: 'column',
+		flex: 1,
+		minWidth: 0,
+		minHeight: 0,
 	} as CSSProperties,
 
 	/** Empty-state message shown when a slot is not connected. */
@@ -226,7 +238,7 @@ const SlotPanel: React.FC<{
  *
  * Renders env scope cards for one or more connection slots. When there
  * is a single slot, cards render directly. When there are multiple
- * slots, a TabPanel provides a pill bar to switch between them.
+ * slots, a PageViewControl strip switches between them.
  *
  * @param props - Environment view configuration and callbacks.
  */
@@ -243,14 +255,10 @@ const EnvironmentView: React.FC<EnvironmentViewProps> = ({
 
 	const isSingle = slots.length <= 1;
 
-	// ── Build tab definitions ──────────────────────────────────────────
-	const tabs: ITabPanelTab[] = slots.map((s) => ({ id: s.id, label: s.label }));
-
-	// ── Host ViewMenu (multi-slot only; single/empty slot has no sub-views) ──
-	// Only the multi-slot layout has a tab bar to defer to a host; single-slot
-	// renders cards directly and publishes nothing.
+	// ── ViewMenu (multi-slot only; single/empty slot has no sub-views) ──
+	// Only the multi-slot layout renders a PageViewControl strip; single-slot
+	// renders cards directly with no strip.
 	const viewMenu: ViewMenu | null = isSingle ? null : { entries: slots.map((s) => ({ id: s.id, label: s.label })) };
-	const hostPresent = usePublishViewMenu(viewMenu ? { menu: viewMenu, activeId: activeTab, onSelect: setActiveTab } : null);
 
 	const panels: Record<string, ITabPanelPanel> = {};
 	for (const slot of slots) {
@@ -282,11 +290,14 @@ const EnvironmentView: React.FC<EnvironmentViewProps> = ({
 
 	return (
 		<div style={styles.container}>
+			{/* Page strip — first element of the content column (multi-slot only). */}
+			{viewMenu && <PageViewControl menu={viewMenu} activeId={activeTab} onSelect={setActiveTab} />}
+
 			{/* Page-level error banner */}
 			{error && <div style={styles.errorBanner}>{error}</div>}
 
 			{isSingle ? (
-				// ── Single slot — no tab bar ────────────────────────────────
+				// ── Single slot — no tab strip ──────────────────────────────
 				<SlotPanel
 					slot={slots[0]}
 					single
@@ -295,17 +306,11 @@ const EnvironmentView: React.FC<EnvironmentViewProps> = ({
 					onSaveEnv={onSaveEnv}
 					requiredKeys={requiredKeys}
 				/>
-			) : hostPresent ? (
-				// ── Multiple slots, host present — host renders the ViewMenu ──
-				<TabPanelContent panels={panels} activeId={activeTab} />
 			) : (
-				// ── Multiple slots — legacy tab bar (fallback) ──────────────
-				<TabPanel
-					tabs={tabs}
-					activeTab={activeTab}
-					onTabChange={setActiveTab}
-					panels={panels}
-				/>
+				// ── Multiple slots — bodies fill the space below the strip ──
+				<div style={styles.pageBody}>
+					<TabPanelContent panels={panels} activeId={activeTab} />
+				</div>
 			)}
 		</div>
 	);

@@ -4,19 +4,17 @@
 // =============================================================================
 
 /**
- * ContentViewMenu — the bottom-tray ViewMenu renderer.
+ * PageViewControl — the tabs-across-the-top strip showing a view's pages.
  *
- * Renders a view's declared {@link ViewMenu} as a compact 38px tray of uppercase
- * tabs, the active tab marked by a 2px brand bottom border. It fits snugly at the
- * bottom of the view: the host places it directly above the StatusBar in shell-ui
- * and at the bottom of the webview in vscode. This is the default ViewMenu
- * renderer and the only one the vscode host uses (it has no shell sidebar).
+ * Renders a view's declared {@link ViewMenu} as a compact 38px strip of
+ * uppercase tabs, the active tab marked by a 2px brand underline on the
+ * strip's bottom edge. The VIEW ITSELF renders it as the very first element
+ * of its own content column — above any ContentHeader; the page title lives
+ * inside each page, below the strip.
  *
- * Placement rules (documentation, enforced by the host — not this component):
- * - A ViewMenu's placement default is `'bottom'`, which selects this renderer.
- * - In tabbed apps the host swaps the menu when the active DocTab changes.
- * - Views must NOT render their own tab bars; they declare a ViewMenu and let
- *   the host place it.
+ * There is no publish/host machinery: consistency is enforced the same way as
+ * Card/DataTable — views with sub-views must use this stock component and
+ * never hand-roll their own tab bars.
  */
 
 import React, { CSSProperties, ReactNode } from 'react';
@@ -27,9 +25,9 @@ import { ViewMenuBadge } from './ViewMenuBadge';
 // TYPES
 // =============================================================================
 
-/** Props for the {@link ContentViewMenu} component. */
-export interface IContentViewMenuProps {
-	/** The declared menu whose entries render as the tray tabs. */
+/** Props for the {@link PageViewControl} component. */
+export interface IPageViewControlProps {
+	/** The declared menu whose entries render as the strip tabs. */
 	menu: ViewMenu;
 	/** Id of the currently active entry (drawn with the brand underline). */
 	activeId: string;
@@ -44,19 +42,20 @@ export interface IContentViewMenuProps {
 // =============================================================================
 
 const styles = {
-	// The tray strip — snug row of tabs above the StatusBar / webview edge.
-	tray: {
+	// The strip — snug row of tabs at the very top of the view's content column.
+	strip: {
 		flex: 'none',
 		display: 'flex',
 		alignItems: 'stretch',
 		gap: 2,
 		height: 38,
 		padding: '0 10px',
-		borderTop: '1px solid var(--rr-border)',
+		borderBottom: '1px solid var(--rr-border)',
 		background: 'var(--rr-bg-default)',
 	} as CSSProperties,
 
-	// A single tray tab; the active treatment is layered on top.
+	// A single strip tab; the active treatment is layered on top. The active
+	// underline indicator sits on the entry's bottom edge (the strip's bottom).
 	tab: (active: boolean): CSSProperties => ({
 		display: 'flex',
 		alignItems: 'center',
@@ -85,14 +84,14 @@ const styles = {
 // =============================================================================
 
 /**
- * Renders a ViewMenu as the bottom tray.
+ * Renders a ViewMenu as the top page strip.
  *
- * @param props - {@link IContentViewMenuProps}.
- * @returns The tray element.
+ * @param props - {@link IPageViewControlProps}.
+ * @returns The strip element.
  */
-export function ContentViewMenu({ menu, activeId, onSelect, trailing }: IContentViewMenuProps): React.ReactElement {
+export function PageViewControl({ menu, activeId, onSelect, trailing }: IPageViewControlProps): React.ReactElement {
 	return (
-		<div style={styles.tray}>
+		<div style={styles.strip}>
 			{menu.entries.map((entry) => {
 				// The active tab carries the brand underline + primary text colour.
 				const isActive = entry.id === activeId;

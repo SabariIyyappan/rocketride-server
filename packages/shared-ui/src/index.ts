@@ -61,10 +61,8 @@ export type { IntegrationTabId } from './components/pipeline-actions/endpointInt
 
 export * from './components/BoxIcon';
 
-export { TabPanel } from './components/tab-panel/TabPanel';
-export type { ITabPanelTab, ITabPanelProps } from './components/tab-panel/TabPanel';
 export { TabPanelContent } from './components/tab-panel/TabPanelContent';
-export type { ITabPanelContentProps } from './components/tab-panel/TabPanelContent';
+export type { ITabPanelContentProps, ITabPanelPanel } from './components/tab-panel/TabPanelContent';
 
 // --- Sidebar footer ----------------------------------------------------------
 export { SidebarFooter } from './components/sidebar-footer/SidebarFooter';
@@ -146,12 +144,12 @@ export { Section, LabelValue } from './components/section/Section';
 export type { ISectionProps, ILabelValueProps } from './components/section/Section';
 export { DetailPanel } from './components/detail-panel/DetailPanel';
 export type { IDetailPanelProps } from './components/detail-panel/DetailPanel';
-export { SidebarViewMenu } from './components/view-menu/SidebarViewMenu';
-export type { ISidebarViewMenuProps } from './components/view-menu/SidebarViewMenu';
-export { ContentViewMenu } from './components/view-menu/ContentViewMenu';
-export type { IContentViewMenuProps } from './components/view-menu/ContentViewMenu';
-export { ViewMenuHostProvider, usePublishViewMenu, useViewMenuHostState } from './components/view-menu/ViewMenuHostContext';
-export type { IViewMenuPublication } from './components/view-menu/ViewMenuHostContext';
+export { PageViewControl } from './components/page-view-control/PageViewControl';
+export type { IPageViewControlProps } from './components/page-view-control/PageViewControl';
+export { SidebarMenu } from './components/sidebar-menu/SidebarMenu';
+export type { ISidebarMenuProps } from './components/sidebar-menu/SidebarMenu';
+export { SidebarCollapsedProvider, useSidebarCollapsed } from './components/sidebar-menu/SidebarCollapsedContext';
+export type { ISidebarCollapsedProviderProps } from './components/sidebar-menu/SidebarCollapsedContext';
 export type { ViewMenu, ViewMenuEntry } from './types/viewMenu';
 export { RocketRideMark } from './components/RocketRideMark';
 export type { IRocketRideMarkProps } from './components/RocketRideMark';

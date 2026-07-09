@@ -135,13 +135,13 @@ export { useFixedPopupPosition } from 'shared/hooks/useFixedPopupPosition';
 export { default as DebugPanel } from './components/layout/DebugPanel';
 
 // =============================================================================
-// HOST CHROME — opt-in sidebar-content + ViewMenu registration
+// HOST CHROME — opt-in sidebar-content registration
 // =============================================================================
 
-// Declare sidebar content / a ViewMenu for the calling view; the shell frame
-// places them (scrolling sidebar slot, sidebar or bottom-tray ViewMenu renderer).
-export { useSidebarContent, useViewMenu } from './components/layout/HostChromeContext';
-export type { UseViewMenuOptions } from './components/layout/HostChromeContext';
+// Declare sidebar content for the calling view; the shell frame mounts it in
+// the sidebar's scrolling slot (rendered even while collapsed — components
+// inside read shared-ui's useSidebarCollapsed to pick their collapsed form).
+export { useSidebarContent } from './components/layout/HostChromeContext';
 // ViewMenu declaration types (re-exported from shared for app convenience).
 export type { ViewMenu, ViewMenuEntry } from 'shared';
 

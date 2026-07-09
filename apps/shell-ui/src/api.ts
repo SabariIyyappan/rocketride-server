@@ -62,7 +62,7 @@ import { useConnectionStatus } from './hooks/useConnectionStatus';
 import { useShellApiConfig } from './connection/ShellApiConfigContext';
 import { useShellEvents } from './views/useShellEvents';
 import { useAppComponent } from './lib/useAppComponent';
-import { useSidebarContent, useViewMenu } from './components/layout/HostChromeContext';
+import { useSidebarContent } from './components/layout/HostChromeContext';
 
 // Shared hooks re-exported through shell-ui for app convenience
 import { useClickOutside } from 'shared/hooks/useClickOutside';
@@ -192,8 +192,7 @@ export type { DocSplitLayoutProps } from './lib/DocSplitLayout';
 export type { DocExplorerProps, DocExplorerConfig, DocEntry, DocEntryChild, DocEntryStatus } from './lib/DocExplorer';
 export type { IVirtualFileSystem } from 'shared/modules/explorer/types';
 
-// Host-chrome (opt-in) registration types + ViewMenu declaration types
-export type { UseViewMenuOptions } from './components/layout/HostChromeContext';
+// ViewMenu declaration types (consumed by shared-ui's PageViewControl/SidebarMenu)
 export type { DashboardData } from './hooks/useDashboardData';
 export type { ViewMenu, ViewMenuEntry } from 'shared';
 
@@ -224,7 +223,6 @@ export const shellApi = {
 	useShellApiConfig,
 	useAppComponent,
 	useSidebarContent,
-	useViewMenu,
 	useClickOutside,
 	useFixedPopupPosition,
 

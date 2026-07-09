@@ -4,31 +4,31 @@
 // =============================================================================
 
 /**
- * SidebarViewMenu — the vertical ViewMenu renderer (shell-ui sidebar slot).
+ * SidebarMenu — a plain, standard vertical menu-list component.
  *
- * Renders a view's declared {@link ViewMenu} as a vertical list inside the
- * sidebar's app-content slot when the active view opted into `'sidebar'`
- * placement. The active entry is drawn as a brand-tinted pill; count badges are
- * right-aligned via the shared {@link ViewMenuBadge}.
+ * Renders a declared {@link ViewMenu} as a vertical list. Not shell-routed:
+ * an app composes zero, one, or several SidebarMenus inside the sidebar
+ * content it registers via `useSidebarContent`, alongside any other content
+ * it likes. The active entry is drawn as a selection-tinted pill; count
+ * badges are right-aligned via the shared {@link ViewMenuBadge}.
  *
- * Placement rules (documentation, enforced by the host — not this component):
- * - A ViewMenu's placement default is `'bottom'`; only views that opt into
- *   `'sidebar'` render through this component.
- * - In tabbed apps the host swaps the menu when the active DocTab changes.
- * - Views must NOT render their own tab bars; they declare a ViewMenu and let
- *   the host place it.
+ * Collapse-aware: while the shell sidebar is collapsed to its icon rail
+ * (read from {@link useSidebarCollapsed}, or forced via the `collapsed`
+ * prop) entries iconify automatically — icon-only squares with the label as
+ * a tooltip and the count badge as a compact overlay.
  */
 
 import React, { CSSProperties, useState } from 'react';
 import { ViewMenu } from '../../types/viewMenu';
-import { ViewMenuBadge } from './ViewMenuBadge';
+import { ViewMenuBadge } from '../page-view-control/ViewMenuBadge';
+import { useSidebarCollapsed } from './SidebarCollapsedContext';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-/** Props for the {@link SidebarViewMenu} component. */
-export interface ISidebarViewMenuProps {
+/** Props for the {@link SidebarMenu} component. */
+export interface ISidebarMenuProps {
 	/** The declared menu whose entries render as the vertical list. */
 	menu: ViewMenu;
 	/** Id of the currently active entry (drawn as the brand-tinted pill). */
@@ -41,6 +41,8 @@ export interface ISidebarViewMenuProps {
 	 * Collapsed (icon-rail) rendering: entries draw icon-only (the entry's
 	 * `icon`, or a first-letter glyph fallback) with the label as a tooltip,
 	 * the section label hidden, and count badges shown as a compact overlay.
+	 * When omitted, the flag falls back to the shell-provided
+	 * {@link useSidebarCollapsed} context; an explicit prop always wins.
 	 */
 	collapsed?: boolean;
 }
@@ -84,8 +86,8 @@ const styles = {
 		borderWidth: 1,
 		borderStyle: 'solid',
 		borderColor: 'transparent',
-		// Active: blue list-selection fill (design-owner preference, matching
-		// Explorer's selected rows) + bolder label. Border stays transparent.
+		// Active: the theme's standard list highlight (--rr-bg-list-active /
+		// --rr-fg-list-active) + bolder label. Border stays transparent.
 		...(active
 			? {
 					background: 'var(--rr-bg-list-active)',
@@ -104,7 +106,7 @@ const styles = {
 
 	// Leading icon slot on expanded rows (17px box matching the shell nav icons).
 	// Active rows inherit the selection foreground so the glyph stays legible
-	// on the blue fill; inactive rows use the quiet secondary tone.
+	// on the highlight fill; inactive rows use the quiet secondary tone.
 	itemIcon: (active: boolean): CSSProperties => ({
 		display: 'inline-flex',
 		alignItems: 'center',
@@ -132,7 +134,7 @@ const styles = {
 		borderWidth: 1,
 		borderStyle: 'solid',
 		borderColor: 'transparent',
-		// Active: blue list-selection fill (see styles.item).
+		// Active: the theme's standard list highlight (see styles.item).
 		...(active
 			? {
 					background: 'var(--rr-bg-list-active)',
@@ -166,24 +168,29 @@ const styles = {
 /**
  * Renders a ViewMenu as a vertical sidebar list.
  *
- * @param props - {@link ISidebarViewMenuProps}.
+ * @param props - {@link ISidebarMenuProps}.
  * @returns The sidebar menu element.
  */
-export function SidebarViewMenu({ menu, activeId, onSelect, sectionLabel, collapsed }: ISidebarViewMenuProps): React.ReactElement {
+export function SidebarMenu({ menu, activeId, onSelect, sectionLabel, collapsed }: ISidebarMenuProps): React.ReactElement {
 	// Track the hovered entry so a non-active row can show the hover fill.
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
 
+	// Collapse flag: an explicit prop wins; otherwise fall back to the
+	// shell-provided context (false outside a provider).
+	const ctxCollapsed = useSidebarCollapsed();
+	const isCollapsed = collapsed ?? ctxCollapsed;
+
 	return (
 		<div style={styles.container}>
-			{/* Optional section header naming the owning document (expanded only). */}
-			{!collapsed && sectionLabel && <div style={styles.sectionLabel}>{sectionLabel}</div>}
+			{/* Optional section header naming the owning section (expanded only). */}
+			{!isCollapsed && sectionLabel && <div style={styles.sectionLabel}>{sectionLabel}</div>}
 			{menu.entries.map((entry) => {
 				// Resolve per-row state for the composed style.
 				const isActive = entry.id === activeId;
 				const isHovered = entry.id === hoveredId;
 
 				// Collapsed icon rail: icon-only square with tooltip + badge overlay.
-				if (collapsed) {
+				if (isCollapsed) {
 					return (
 						<div
 							key={entry.id}

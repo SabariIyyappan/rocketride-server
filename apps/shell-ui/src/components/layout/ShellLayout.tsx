@@ -43,14 +43,13 @@ import { ShellApiConfigProvider } from '../../connection/ShellApiConfigContext';
 import { getCommonKeys, resolveSettingsForApp } from '../../views/settings/settingsUtils';
 import { AppErrorBoundary } from './AppErrorBoundary';
 import { OverlayManager, useOverlay } from './OverlayManager';
-import { HostChromeProvider, useHostChromeState, useViewMenu } from './HostChromeContext';
+import { HostChromeProvider } from './HostChromeContext';
 import Sidebar from './Sidebar';
 import StatusBar from './StatusBar';
 import LoadingScreen from './LoadingScreen';
 import DebugPanel from './DebugPanel';
 import type { ShellConfig } from '../../workspace/types';
 import { commonStyles } from 'shared/themes/styles';
-import { ContentViewMenu, ViewMenuHostProvider, useViewMenuHostState } from 'shared';
 
 // =============================================================================
 // STYLES
@@ -275,10 +274,10 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 
 	// --- Derived layout info -------------------------------------------------
 	// The sidebar is always mounted (inside HostChromeProvider) and self-hides
-	// when it has no content: a legacy `components.Sidebar`, app-registered
-	// sidebar content, or a 'sidebar'-placement ViewMenu. Apps with none of
-	// these render no sidebar and the client area spans full width — exactly as
-	// before, when the sidebar was gated on `components.Sidebar` here.
+	// when it has no content: a legacy `components.Sidebar` or app-registered
+	// sidebar content. Apps with neither render no sidebar and the client area
+	// spans full width — exactly as before, when the sidebar was gated on
+	// `components.Sidebar` here.
 	const appName = activeApp?.branding?.appName ?? config.apps[0]?.name ?? 'RocketRide';
 	// Only show the status bar once the app has actually loaded. During the app-load gap the
 	// client area shows the boot rocket (LoadingScreen); rendering the StatusBar there made it
@@ -305,13 +304,6 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 				{/* Client area */}
 				<div style={styles.overlayContainer}>
 					<div style={styles.clientArea}>
-						{/* Host the active app's ViewMenu: shared views published here are
-						    forwarded by the bridge into the shell's ViewMenu registration, so
-						    a view's sub-view tabs render as the bottom ContentViewMenu tray.
-						    Shell overlays (Account/Settings) render OUTSIDE this provider and
-						    keep their TabPanel fallback. */}
-						<ViewMenuHostProvider>
-						<ViewMenuHostBridge />
 						{activeApp?.components?.App ? (
 							<AppErrorBoundary key={activeAppId} appName={appName}>
 								<activeApp.components.App
@@ -336,12 +328,6 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 							// with no "Loading…" text frame flashing between them.
 							<LoadingScreen />
 						) : null}
-						</ViewMenuHostProvider>
-
-						{/* ContentViewMenu tray — 'bottom'-placement ViewMenu rendered
-						    at the base of the client area column, directly above the
-						    StatusBar. Renders nothing until a view registers one. */}
-						<ContentViewMenuSlot />
 					</div>
 				</div>
 
@@ -366,61 +352,6 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 		</HostChromeProvider>
 		</ShellApiConfigProvider>
 	);
-};
-
-// =============================================================================
-// CONTENT VIEWMENU SLOT — bottom-tray ViewMenu above the StatusBar
-// =============================================================================
-
-/**
- * Reads the registered ViewMenu and renders the shared {@link ContentViewMenu}
- * tray when the active view opted into 'bottom' placement (the default). A
- * 'sidebar'-placement menu is rendered by the Sidebar instead, so this slot
- * renders nothing for it. Renders nothing when no menu is registered — today's
- * layout for every app that has not adopted the ViewMenu API.
- */
-const ContentViewMenuSlot: React.FC = () => {
-	const { viewMenu } = useHostChromeState();
-	// Only the default 'bottom' placement renders here.
-	if (!viewMenu || (viewMenu.menu.placement ?? 'bottom') !== 'bottom') return null;
-	return (
-		<ContentViewMenu
-			menu={viewMenu.menu}
-			activeId={viewMenu.activeId}
-			onSelect={viewMenu.onSelect}
-		/>
-	);
-};
-
-// =============================================================================
-// VIEWMENU HOST BRIDGE — forwards shared publications into the shell ViewMenu
-// =============================================================================
-
-/** No-op select handler used while no menu is published (never invoked). */
-const NOOP_SELECT = (): void => {};
-
-/**
- * Bridges the shared {@link ViewMenuHostProvider} to the shell's host-chrome
- * ViewMenu registration. Shared views (rocket-ui's ProjectView, monitor-ui's
- * MonitorView, ...) call `usePublishViewMenu` to publish into the provider that
- * wraps the client-area app; this bridge reads that publication and forwards it
- * through {@link useViewMenu}, so the shell renders it with the stock renderer
- * (the bottom ContentViewMenu tray by default). Publishing nothing withdraws the
- * shell ViewMenu. Renders no DOM — it only registers.
- *
- * @returns null (registration-only component).
- */
-const ViewMenuHostBridge: React.FC = () => {
-	// The live publication from the client-area ViewMenuHostProvider.
-	const pub = useViewMenuHostState();
-	// Forward it into the shell's ViewMenu slot (null menu withdraws it).
-	useViewMenu({
-		menu: pub ? pub.menu : null,
-		activeId: pub ? pub.activeId : '',
-		onSelect: pub ? pub.onSelect : NOOP_SELECT,
-		sectionLabel: pub?.sectionLabel,
-	});
-	return null;
 };
 
 // =============================================================================

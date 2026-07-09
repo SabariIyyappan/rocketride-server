@@ -25,9 +25,9 @@
 // =============================================================================
 
 import React, { useCallback, useEffect, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useShellConnection, useSidebarContent, NavButton, BxPlus } from 'shell-ui';
-import { Explorer } from 'shared';
+import { Explorer, useSidebarCollapsed } from 'shared';
 import type { ExplorerEntry, ExplorerConfig, IVirtualFileSystem } from 'shared';
 import { getDocs } from './docs';
 import { listChatDir, saveChat, deleteChat, renameChat } from './chatStore';
@@ -80,6 +80,23 @@ const NOOP_VFS: IVirtualFileSystem = {
 };
 
 // =============================================================================
+// COLLAPSED GATE
+// =============================================================================
+
+/**
+ * Root gate for the registered sidebar node. The shell renders registered
+ * sidebar content even while the sidebar is collapsed to its icon rail; this
+ * free-form chat-Explorer content has no icon-rail form (a future per-app
+ * design task), so the gate reads the shell-provided collapsed flag and
+ * renders nothing while collapsed — preserving the previous look.
+ */
+const SidebarCollapsedGate: React.FC<{ children: ReactNode }> = ({ children }) => {
+	// Collapsed flag provided by the shell around the sidebar slot.
+	const collapsed = useSidebarCollapsed();
+	return collapsed ? null : <>{children}</>;
+};
+
+// =============================================================================
 // COMPONENT
 // =============================================================================
 
@@ -90,9 +107,9 @@ const NOOP_VFS: IVirtualFileSystem = {
  * chat-file Explorer node — the shared Explorer plus a "New Chat" action — and
  * publishes it into the shell sidebar's scrolling slot via useSidebarContent(),
  * so it composes with the shell's fixed header/footer. Renders null itself;
- * mounted by AparaviApp (not the legacy components.Sidebar slot). The shell
- * frame owns the collapse behaviour and hides this free-form content while the
- * sidebar is collapsed.
+ * mounted by AparaviApp (not the legacy components.Sidebar slot). The
+ * registered node's root SidebarCollapsedGate hides this free-form content
+ * while the sidebar is collapsed.
  */
 const AparaviSidebar: React.FC = () => {
 	const { client, isConnected } = useShellConnection();
@@ -236,8 +253,9 @@ const AparaviSidebar: React.FC = () => {
 		</div>
 	);
 
-	// Publish to the shell sidebar slot; withdrawn automatically on unmount.
-	useSidebarContent(content);
+	// Publish to the shell sidebar slot (behind the collapse gate); withdrawn
+	// automatically on unmount.
+	useSidebarContent(<SidebarCollapsedGate>{content}</SidebarCollapsedGate>);
 
 	// Registration-only component — nothing rendered inline.
 	return null;

@@ -14,7 +14,7 @@
  * Anatomy (matches the style-guide 6.2 / mockup):
  * - a fixed EntityHeader (42px avatar/icon slot + title + secondary line + close),
  * - an optional underline tab strip taking the same {@link ViewMenuEntry} shape as
- *   the ViewMenu renderers (count badges reuse the shared {@link ViewMenuBadge}),
+ *   PageViewControl/SidebarMenu (count badges reuse the shared {@link ViewMenuBadge}),
  * - a scrollable body composed from Section / LabelValue / Chip / StatusBadge /
  *   MiniContainer / Button.
  *
@@ -25,7 +25,7 @@
 
 import React, { CSSProperties, ReactNode, useEffect, useRef, useState } from 'react';
 import { ViewMenuEntry } from '../../types/viewMenu';
-import { ViewMenuBadge } from '../view-menu/ViewMenuBadge';
+import { ViewMenuBadge } from '../page-view-control/ViewMenuBadge';
 
 // =============================================================================
 // CONSTANTS

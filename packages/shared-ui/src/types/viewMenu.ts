@@ -21,17 +21,24 @@
 // SOFTWARE.
 
 // =============================================================================
-// VIEWMENU TYPES — one declaration, two renderers
+// VIEWMENU TYPES — one data shape, two independent components
 // =============================================================================
 //
-// A complex view with sub-views declares a single ViewMenu; the host renders it
-// with one of two stock renderers — the SidebarViewMenu (vertical list in the
-// sidebar slot) or the ContentViewMenu (bottom tray). Views NEVER draw their own
-// tab bars; they declare a ViewMenu and let the host place it.
+// A ViewMenu is a plain data declaration of a view's selectable entries. Two
+// stock components consume it, each with its own contract:
 //
-// In tabbed (document) apps the host swaps the active menu whenever the active
-// DocTab changes; in non-tabbed apps the single main content window drives it.
-// The vscode host has no shell sidebar, so it always renders the bottom tray.
+// - PageViewControl — the tabs-across-the-top strip showing a view's pages.
+//   The VIEW ITSELF renders it as the very first element of its own content
+//   column (above any ContentHeader — the title lives inside each page, below
+//   the strip). There is no publish/host machinery: consistency is enforced
+//   the same way as Card/DataTable — views must use the stock component and
+//   never hand-roll tab bars.
+//
+// - SidebarMenu — a plain, standard vertical menu-list component. Not
+//   shell-routed: an app composes zero, one, or several of them inside the
+//   sidebar content it registers via useSidebarContent, alongside any other
+//   content it likes. It iconifies automatically while the shell sidebar is
+//   collapsed (see SidebarCollapsedContext).
 // =============================================================================
 
 // =============================================================================
@@ -51,8 +58,8 @@ export interface ViewMenuEntry {
 	/** 'error' renders the count badge in --rr-color-error. */
 	severity?: 'error';
 	/**
-	 * Optional icon shown when the sidebar renderer is collapsed to its icon
-	 * rail (design-owner decision: collapsed sidebars show icon-only entries).
+	 * Optional icon shown when a SidebarMenu is collapsed to its icon rail
+	 * (design-owner decision: collapsed sidebars show icon-only entries).
 	 * Entries without an icon fall back to a first-letter glyph.
 	 */
 	icon?: ReactNode;
@@ -62,10 +69,8 @@ export interface ViewMenuEntry {
 // MENU
 // =============================================================================
 
-/** Declared once per complex view; the host renders it. Views never draw their own tabs. */
+/** The entry list consumed by PageViewControl and SidebarMenu. */
 export interface ViewMenu {
 	/** Ordered list of selectable sub-view entries. */
 	entries: ViewMenuEntry[];
-	/** Where the menu renders in shell-ui. vscode always uses 'bottom'. Default: 'bottom'. */
-	placement?: 'bottom' | 'sidebar';
 }

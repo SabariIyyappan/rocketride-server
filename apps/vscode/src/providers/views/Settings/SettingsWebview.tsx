@@ -32,9 +32,8 @@ import { DeploySettings } from './DeploySettings';
 import { MessageDisplay } from './MessageDisplay';
 import { commonStyles } from 'shared/themes/styles';
 import type { CheckoutPlan, ViewMenu } from 'shared';
-import { TabPanel } from 'shared/components/tab-panel/TabPanel';
-import { TabPanelContent, usePublishViewMenu } from 'shared';
-import type { ITabPanelTab, ITabPanelPanel } from 'shared/components/tab-panel/TabPanel';
+import { TabPanelContent, PageViewControl } from 'shared';
+import type { ITabPanelPanel } from 'shared/components/tab-panel/TabPanelContent';
 import type { ServiceStatus, DockerStatus, VersionOption } from '../components/panels/shared';
 
 import 'shared/themes/rocketride-default.css';
@@ -274,6 +273,22 @@ const subscribeBannerStyles = {
 // ============================================================================
 // AUTH ERROR BANNER STYLES
 // ============================================================================
+
+// ============================================================================
+// PAGE BODY STYLE
+// ============================================================================
+
+/**
+ * Fills the space below the top PageViewControl strip; TabPanelContent's
+ * 100%-height wrapper resolves against this definite flex box.
+ */
+const pageBodyStyle: CSSProperties = {
+	display: 'flex',
+	flexDirection: 'column',
+	flex: 1,
+	minWidth: 0,
+	minHeight: 0,
+};
 
 const authErrorBannerStyles = {
 	container: {
@@ -791,21 +806,19 @@ export const Settings: React.FC = () => {
 	// TAB DEFINITIONS
 	// ========================================================================
 
-	const tabs: ITabPanelTab[] = useMemo(
-		() => [
-			{ id: 'development', label: 'Development' },
-			{ id: 'deployment', label: 'Deployment' },
-			{ id: 'pipeline', label: 'Pipeline' },
-			{ id: 'debugging', label: 'Debugging' },
-			{ id: 'integrations', label: 'Integrations' },
-		],
+	// ViewMenu declaration — rendered by this view's own PageViewControl strip.
+	const settingsMenu = useMemo<ViewMenu>(
+		() => ({
+			entries: [
+				{ id: 'development', label: 'Development' },
+				{ id: 'deployment', label: 'Deployment' },
+				{ id: 'pipeline', label: 'Pipeline' },
+				{ id: 'debugging', label: 'Debugging' },
+				{ id: 'integrations', label: 'Integrations' },
+			],
+		}),
 		[]
 	);
-
-	// Host ViewMenu declaration — same entries as the fallback tabs. The vscode
-	// host renders this as the bottom tray; the TabPanel below is the fallback.
-	const settingsMenu = useMemo<ViewMenu>(() => ({ entries: tabs.map((t) => ({ id: t.id, label: t.label })) }), [tabs]);
-	const hostPresent = usePublishViewMenu({ menu: settingsMenu, activeId: activeTab, onSelect: setActiveTab });
 
 	// ── Checkout callbacks (passed to CloudPanel) ──────────────────────
 	const handleFetchPlans = useCallback((): Promise<CheckoutPlan[]> => {
@@ -993,6 +1006,9 @@ export const Settings: React.FC = () => {
 
 	return (
 		<div style={commonStyles.columnFill}>
+			{/* ── Page strip — the view renders its own tabs at the very top ── */}
+			<PageViewControl menu={settingsMenu} activeId={activeTab} onSelect={setActiveTab} />
+
 			{/* ── Auth error banner (shown when opened due to auth failure) ── */}
 			{authError && (
 				<div style={authErrorBannerStyles.container}>
@@ -1009,12 +1025,10 @@ export const Settings: React.FC = () => {
 					</div>
 				</div>
 			)}
-			{/* ── Tab panel (host renders the tray; TabPanel is the fallback) ── */}
-			{hostPresent ? (
+			{/* ── Page bodies fill the space below the strip ── */}
+			<div style={pageBodyStyle}>
 				<TabPanelContent panels={panels} activeId={activeTab} />
-			) : (
-				<TabPanel tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} panels={panels} />
-			)}
+			</div>
 		</div>
 	);
 };

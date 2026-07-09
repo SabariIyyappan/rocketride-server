@@ -81,7 +81,7 @@ const styles = {
 	// object's property set never changes across renders — conditionally adding
 	// a borderColor longhand over commonStyles.card's border shorthand made
 	// React's style diffing leave the hover color behind on mouse-out (the
-	// stuck-outline bug, fixed in SidebarViewMenu the same way).
+	// stuck-outline bug, fixed in SidebarMenu the same way).
 	interactive: (hovered: boolean): CSSProperties => ({
 		cursor: 'pointer',
 		borderWidth: 1,

@@ -341,10 +341,10 @@ const splitHeader: CSSProperties = {
  * Tab content area — standard padded wrapper for a view's scrollable body.
  * Uses the standard page grammar: 20px top and 24px side/bottom gutters, full
  * width. The old 79px top cleared the now-retired overlay pill bar; the tabs
- * live in host chrome (the ContentViewMenu bottom tray / ViewMenu) now, so no
- * top clearance is needed. Long-form field groups cap their own width (~640px)
- * per the style guide — the page itself is not indented. Scrolling is handled
- * by the TabPanel panel div, not this element.
+ * are the view-rendered PageViewControl strip at the top of the content
+ * column now, so no top clearance is needed. Long-form field groups cap their
+ * own width (~640px) per the style guide — the page itself is not indented.
+ * Scrolling is handled by the TabPanelContent panel div, not this element.
  */
 const tabContent: CSSProperties = {
 	padding: '20px 24px 24px',

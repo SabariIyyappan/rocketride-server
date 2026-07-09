@@ -30,7 +30,6 @@ import { commonStyles } from 'shared/themes/styles';
 import { ConnectionManager } from '../../connection/connection';
 import AccountPage from '../../views/account/AccountPage';
 import SettingsPage from '../../views/settings/SettingsPage';
-import { OverlayViewMenuHost } from './OverlayViewMenuHost';
 import EnvironmentPage from '../../views/environment/EnvironmentPage';
 
 // =============================================================================
@@ -72,10 +71,15 @@ const styles = {
 		flexDirection: 'column',
 		overflow: 'hidden',
 	} as CSSProperties,
+	// Close floats over the dialog's top-right corner. Shared views draw their
+	// own 38px PageViewControl strip at the top of the dialog, so the button is
+	// vertically centered within that band ((38 - ~24px button) / 2 = 7) and
+	// reads as the strip row's trailing control. Strip entries are left-aligned,
+	// so they never reach the button at standard dialog widths.
 	dialogClose: {
 		...commonStyles.buttonSecondary,
 		position: 'absolute',
-		top: 12,
+		top: 7,
 		right: 14,
 		zIndex: 10,
 		fontFamily: 'var(--rr-font-family)',
@@ -139,19 +143,16 @@ export const OverlayManager: React.FC<OverlayManagerProps> = ({ children }) => {
 		<OverlayContext.Provider value={setOverlay}>
 			{children}
 
-			{/* Shell-owned overlays render as modal dialogs over client area */}
+			{/* Shell-owned overlays render as modal dialogs over client area.
+			    Pages render directly; views with sub-views draw their own
+			    PageViewControl strip at the top of the dialog. */}
 			{overlay !== null && (
 				<div style={styles.backdrop} onClick={closeOverlay}>
 					<div style={styles.dialog} onClick={(e) => e.stopPropagation()}>
 						<button style={styles.dialogClose} onClick={closeOverlay}>✕</button>
-						{/* Overlays get the same ViewMenu host as the client area: shared
-						    views publish their menu into the dialog's bottom tray instead
-						    of falling back to the legacy overlay pill bar. */}
-						<OverlayViewMenuHost>
-							{overlay === 'account' && <AccountPage />}
-							{overlay === 'settings' && <SettingsPage />}
-							{overlay === 'environment' && <EnvironmentPage />}
-						</OverlayViewMenuHost>
+						{overlay === 'account' && <AccountPage />}
+						{overlay === 'settings' && <SettingsPage />}
+						{overlay === 'environment' && <EnvironmentPage />}
 					</div>
 				</div>
 			)}

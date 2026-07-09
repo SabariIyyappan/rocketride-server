@@ -4,7 +4,7 @@
 // =============================================================================
 
 /**
- * AccountView — account management tabs using the shared TabPanel overlay.
+ * AccountView — account management tabs behind a stock PageViewControl strip.
  *
  * This is the pure, host-agnostic root component for the Account module.
  * All data is received as props and all server mutations are delegated to
@@ -19,11 +19,10 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
-import { TabPanel } from '../../components/tab-panel/TabPanel';
 import { TabPanelContent } from '../../components/tab-panel/TabPanelContent';
-import { usePublishViewMenu } from '../../components/view-menu/ViewMenuHostContext';
+import { PageViewControl } from '../../components/page-view-control/PageViewControl';
 import { commonStyles } from '../../themes/styles';
-import type { ITabPanelTab, ITabPanelPanel } from '../../components/tab-panel/TabPanel';
+import type { ITabPanelPanel } from '../../components/tab-panel/TabPanelContent';
 import type { ViewMenu } from '../../types/viewMenu';
 import type { ConnectResult, ApiKeyRecord, OrgDetail, MemberRecord, TeamRecord, TeamDetail, TeamMemberRecord, AccountSection, ProfileUpdate } from './types';
 import type { BillingDetail, CreditBalance, TransactionsResult, UsageRollup } from '../billing/types';
@@ -98,6 +97,17 @@ const styles = {
 		borderRadius: 6,
 		cursor: 'default',
 		letterSpacing: '0.05em',
+	} as CSSProperties,
+	/**
+	 * Fills the space below the top PageViewControl strip; TabPanelContent's
+	 * 100%-height wrapper resolves against this definite flex box.
+	 */
+	pageBody: {
+		display: 'flex',
+		flexDirection: 'column',
+		flex: 1,
+		minWidth: 0,
+		minHeight: 0,
 	} as CSSProperties,
 };
 
@@ -682,24 +692,8 @@ const AccountView: React.FC<IAccountViewProps> = (props) => {
 	// =========================================================================
 
 	/**
-	 * Memoized tab descriptor array for the TabPanel overlay.
-	 * Badges on API Keys, Teams, and Members show the current count when non-zero.
-	 */
-	const tabs = useMemo<ITabPanelTab[]>(
-		() => [
-			{ id: 'profile', label: 'Profile' },
-			{ id: 'billing', label: 'Billing', badge: subscriptions.length > 0 ? subscriptions.length : undefined },
-			{ id: 'api-keys', label: 'API Keys', badge: keys.filter((k) => k.active).length > 0 ? keys.filter((k) => k.active).length : undefined },
-			{ id: 'organization', label: 'Organization' },
-			{ id: 'teams', label: 'Teams', badge: teams.length > 0 ? teams.length : undefined },
-			{ id: 'members', label: 'Members', badge: members.length > 0 ? members.length : undefined },
-		],
-		[subscriptions, keys, teams, members]
-	);
-
-	/**
-	 * Host ViewMenu declaration — same entries/counts as the fallback tabs, in
-	 * ViewMenu shape. The host renders this; the TabPanel below is the fallback.
+	 * ViewMenu declaration — rendered by this view's own PageViewControl strip.
+	 * Counts on Billing, API Keys, Teams, and Members show when non-zero.
 	 */
 	const activeKeyCount = keys.filter((k) => k.active).length;
 	const viewMenu = useMemo<ViewMenu>(
@@ -724,9 +718,6 @@ const AccountView: React.FC<IAccountViewProps> = (props) => {
 		},
 		[onSectionChange, onActiveTeamIdChange]
 	);
-
-	// Publish the menu while a host is present; `hostPresent` decides fallback.
-	const hostPresent = usePublishViewMenu({ menu: viewMenu, activeId: section, onSelect: handleSelectSection });
 
 	// =========================================================================
 	// PANELS
@@ -820,13 +811,12 @@ const AccountView: React.FC<IAccountViewProps> = (props) => {
 
 	return (
 		<div style={styles.root}>
-			{/* Host present → host renders the ViewMenu, view renders only its panels.
-			    No host (e.g. shell overlay) → the legacy TabPanel pill bar (fallback). */}
-			{hostPresent ? (
+			{/* Page strip — the view renders its own tabs at the very top. */}
+			<PageViewControl menu={viewMenu} activeId={section} onSelect={handleSelectSection} />
+			{/* Page bodies fill the space below the strip. */}
+			<div style={styles.pageBody}>
 				<TabPanelContent panels={panels} activeId={section} />
-			) : (
-				<TabPanel tabs={tabs} activeTab={section} onTabChange={handleSelectSection} panels={panels} />
-			)}
+			</div>
 
 			{/* Frosted-glass overlay with a disabled status button when disconnected. */}
 			{!isConnected && (
