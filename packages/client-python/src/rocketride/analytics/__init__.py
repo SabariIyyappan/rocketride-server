@@ -21,30 +21,22 @@
 # SOFTWARE.
 
 """
-rocketride.analytics — RocketRide telemetry primitives (Python SDK).
+rocketride.analytics — the RocketRide event taxonomy (Python SDK).
 
-Public entry point for the analytics subpackage: the PostHog event taxonomy
-(:mod:`events`), anonymous ``distinct_id`` generation and persistence
-(:mod:`anon_id`), the shared opt-out predicate (:mod:`opt_out`), and the
-standard event-context props builder (:mod:`standard_props`).
+Names and shapes only: the canonical event names, their source union, and the
+enums their properties draw from. Zero runtime, no side effects.
 
-Every module is pure and side-effect-free; consumers supply their own
-environment and persistence. See each submodule for details. This barrel
-simply re-exports the useful public surface so callers can write, e.g.::
+The capture-time primitives that accompanied this taxonomy (anonymous id
+generation, the opt-out predicate, the standard-props builder) were removed
+until a consumer exists that actually emits events. Reintroduce them alongside
+that consumer rather than ahead of it.
 
-    from rocketride.analytics import EVENTS, standard_props, is_opted_out
+    from rocketride.analytics import EVENTS, EventName
 """
 
 from __future__ import annotations
 
-from .anon_id import (
-    ANON_ID_KEY,
-    AnonIdStore,
-    get_or_create_anon_id,
-    new_anon_id,
-)
 from .events import (
-    EVENT_PROPS,
     EVENTS,
     ChatErrorKind,
     EventName,
@@ -52,43 +44,12 @@ from .events import (
     StripeInterval,
     SubscribeSurface,
 )
-from .opt_out import (
-    OptOutSignals,
-    is_opted_out,
-)
-from .standard_props import (
-    RR_LIB,
-    AnalyticsEnv,
-    CaptureMode,
-    Platform,
-    Surface,
-    detect_platform,
-    standard_props,
-)
 
 __all__ = [
-    # events
     'EVENTS',
+    'ChatErrorKind',
     'EventName',
     'EventSource',
-    'SubscribeSurface',
     'StripeInterval',
-    'ChatErrorKind',
-    'EVENT_PROPS',
-    # anon_id
-    'ANON_ID_KEY',
-    'new_anon_id',
-    'AnonIdStore',
-    'get_or_create_anon_id',
-    # opt_out
-    'OptOutSignals',
-    'is_opted_out',
-    # standard_props
-    'Platform',
-    'Surface',
-    'CaptureMode',
-    'RR_LIB',
-    'AnalyticsEnv',
-    'standard_props',
-    'detect_platform',
+    'SubscribeSurface',
 ]

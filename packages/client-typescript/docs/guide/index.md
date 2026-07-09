@@ -74,7 +74,6 @@ You build your `.pipe` - and you run it against the fastest AI runtime available
 - **File upload** - `sendFiles()` with progress; streaming with `pipe()`
 - **Connection lifecycle** - Optional persist mode, reconnection, and callbacks (`onConnected`, `onDisconnected`, `onConnectError`)
 - **Full TypeScript support** - Complete type definitions
-- **Telemetry taxonomy** - Shared, zero-runtime PostHog event names and property types via the `rocketride/analytics` subpath ([Analytics / Telemetry Taxonomy](/develop/typescript/analytics))
 
 ---
 
