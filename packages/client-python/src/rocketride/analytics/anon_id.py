@@ -20,8 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from __future__ import annotations
-
 """
 rocketride.analytics — anonymous distinct_id primitive.
 
@@ -42,6 +40,8 @@ therefore no fallback and no throw path here — we preserve the identical
 guarantee (crypto-strength ids, never a weak/collision-prone PRNG) with a
 single unconditional call.
 """
+
+from __future__ import annotations
 
 import uuid
 from typing import Protocol
