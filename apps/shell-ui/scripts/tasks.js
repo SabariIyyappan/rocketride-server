@@ -214,15 +214,28 @@ const shellContractModule = {
 		{
 			// Freeze the shell-api contract: bundle src/api.ts into the next
 			// packages/shell-api/versions/vN and regenerate the conformance file.
-			// `--check` runs CI mode (no writes; fails on un-frozen drift).
 			name: 'shell:freeze',
 			action: () => ({
 				description: 'Freeze the shell-api contract',
 				run: async (ctx, task) => {
 					const script = path.join(APP_ROOT, 'scripts', 'freeze-shell-api.js');
 					const args = [script];
+					// Back-compat: `shell:freeze --check` still runs CI mode.
 					if (ctx.options.check) args.push('--check');
 					await execCommand('node', args, { task, cwd: APP_ROOT });
+				},
+			}),
+		},
+		{
+			// CI mode: verify the live surface has not drifted from the newest
+			// frozen version, without writing anything. Nonzero exit on drift.
+			// The preferred spelling — replaces `shell:freeze --check`.
+			name: 'shell:check',
+			action: () => ({
+				description: 'Check the shell-api contract is current (no write)',
+				run: async (ctx, task) => {
+					const script = path.join(APP_ROOT, 'scripts', 'freeze-shell-api.js');
+					await execCommand('node', [script, '--check'], { task, cwd: APP_ROOT });
 				},
 			}),
 		},

@@ -27,14 +27,24 @@
 // =============================================================================
 //
 // Backs the `./builder shell:freeze` builder target. Bundles shell-ui's curated
-// api.ts surface into a single self-contained .d.ts, versions it under
-// packages/shell-api/versions/, and regenerates the conformance file so any
-// future breaking drift fails shell-ui's own `tsc --noEmit`.
+// api.ts surface into a single self-contained .d.ts and APPENDS it under
+// packages/shell-api/versions/ as the next frozen version. Existing versions are
+// never rewritten or dropped.
 //
-// Usage:  node freeze-shell-api.js [--check]
-//   (no flag)  full freeze — writes the next version + updates the contract.
-//   --check    CI mode — steps 1-4 only; nonzero exit if the live surface
-//              differs from the newest frozen version (no freeze committed).
+// The contract is the INTERSECTION of every frozen version (`ShellApiLatest` in
+// index.ts). shell-ui's api.ts holds the live surface against it (`_contractHold`),
+// so a removed or breaking member fails shell-ui's OWN `tsc --noEmit` — there is
+// no gate here to override and no freeze path that drops a member (freezing only
+// ever appends). This file also pins each exported TYPE against the earliest
+// version that froze it (contract-check.generated.ts).
+//
+// Usage:  node freeze-shell-api.js [--check | --regen]
+//   (no flag)  full freeze — appends the next version + re-accumulates the contract.
+//   --check    CI mode — nonzero exit if the live surface differs from the newest
+//              frozen version (no freeze committed).
+//   --regen    reapply the accumulated barrels + conformance over the EXISTING
+//              versions without appending one (used when the mechanism, not the
+//              surface, changes).
 // =============================================================================
 
 const path = require('path');
@@ -56,6 +66,7 @@ const VERSIONS_DIR = path.join(SHELL_API_DIR, 'versions');
 const INDEX_TS = path.join(SHELL_API_DIR, 'index.ts');
 const LATEST_TS = path.join(SHELL_API_DIR, 'latest.ts');
 const CONTRACT_CHECK = path.join(SRC_DIR, 'contract-check.generated.ts');
+const APIVER_TS = path.join(SRC_DIR, 'apiver.ts');
 const TMP_DIR = path.join(SHELL_API_DIR, '.freeze-tmp');
 
 // Markers wrapping the generated declaration body inside each version file, so
@@ -311,79 +322,100 @@ function extractBundleBody(fileContent) {
 	return fileContent.slice(start + BEGIN.length, end).trim();
 }
 
+// NOTE: there is deliberately no compatibility gate here anymore. Backward
+// compatibility is enforced structurally by the accumulated contract itself: the
+// per-version floors in contract-check.generated.ts (and the anchor in
+// contract-hold.ts) assert the live surface still satisfies EACH frozen version.
+// A removed/broken member fails shell-ui's own tsc, and freezing only ever
+// appends a version — there is no tool path that drops one. That makes the old
+// gate (and its resettable escape hatch) unnecessary.
+
 /**
- * Step 4 — is the candidate textually identical to the newest frozen version
- * (ignoring the provenance header and version-specific alias)?
+ * Collect the TOP-LEVEL member names of the `shellApi` value object from a bundle
+ * body, tracking brace depth so nested object-type keys are ignored.
  *
- * @param {number} prev - Newest existing version, or -1.
- * @param {string} candidateBody - The freshly generated bundle body.
- * @returns {boolean}
+ * @param {string} bundleText - A generated/frozen bundle body.
+ * @returns {Set<string>} The value-member names (e.g. useShellConnection, getClient).
  */
-function isNoOp(prev, candidateBody) {
-	if (prev < 0) return false;
-	const prevContent = fs.readFileSync(path.join(VERSIONS_DIR, `v${prev}.d.ts`), 'utf8');
-	const prevBody = extractBundleBody(prevContent);
-	return prevBody !== null && prevBody === candidateBody.trim();
+function shellApiMemberNames(bundleText) {
+	const names = new Set();
+	let started = false;
+	let depth = 0;
+	for (const line of bundleText.split('\n')) {
+		if (!started) {
+			if (/declare const shellApi:\s*\{/.test(line)) started = true;
+			else continue;
+		} else if (depth === 1) {
+			// Only depth-1 lines are top-level members of the object.
+			const m = /^\s*readonly (\w+):/.exec(line);
+			if (m) names.add(m[1]);
+		}
+		for (const ch of line) {
+			if (ch === '{') depth++;
+			else if (ch === '}') depth--;
+		}
+		if (started && depth === 0) break;
+	}
+	return names;
 }
 
 /**
- * Step 5 — compatibility gate. Verify the new version is a superset of the
- * previous one (additions allowed, removals rejected). Only runs when a
- * previous version exists. There is no override flag.
+ * The set of exported surface names in a bundle: value members (prefixed `v:`)
+ * plus standalone type exports (prefixed `t:`). Order-independent, so cosmetic
+ * reordering of api.ts does not change it.
  *
- * @param {number} prev - Previous version number.
- * @param {number} next - Candidate version number.
- * @param {string} candidateBody - The generated bundle body.
+ * @param {string} bundleText - A generated/frozen bundle body.
+ * @returns {Set<string>} Namespaced surface names.
  */
-function compatibilityGate(prev, next, candidateBody) {
-	// Write the candidate as an importable module that exports ShellApiV{next}.
-	const candidatePath = path.join(TMP_DIR, 'candidate.d.ts');
-	fs.writeFileSync(candidatePath, `${candidateBody}\nexport type ShellApiV${next} = ShellApiShape;\n`);
-	// Assert the old shape is still satisfiable by the new shape.
-	const compatPath = path.join(TMP_DIR, 'compat.ts');
-	fs.writeFileSync(
-		compatPath,
-		[
-			`import type { ShellApiV${prev} } from '../versions/v${prev}';`,
-			`import type { ShellApiV${next} } from './candidate';`,
-			`const _compat: ShellApiV${prev} = {} as ShellApiV${next};`,
-			'void _compat;',
-			'',
-		].join('\n'),
-	);
-	// Self-contained bundles still import 'react'; provide DOM/JSX libs and let
-	// module resolution walk up to the hoisted react types.
-	const tmpTsconfig = path.join(TMP_DIR, 'tsconfig.json');
-	fs.writeFileSync(
-		tmpTsconfig,
-		JSON.stringify(
-			{
-				compilerOptions: {
-					noEmit: true,
-					strict: true,
-					skipLibCheck: true,
-					moduleResolution: 'bundler',
-					module: 'esnext',
-					target: 'es2020',
-					lib: ['es2020', 'dom', 'dom.iterable'],
-					jsx: 'react-jsx',
-				},
-				files: ['compat.ts'],
-			},
-			null,
-			2,
-		),
-	);
-	const r = runNodeBin(TSC.binPath, ['--noEmit', '-p', tmpTsconfig], TMP_DIR);
-	if (r.code !== 0) {
-		console.error(
-			`[shell:freeze] BREAKING CHANGE vs v${prev} — restore the old member(s) alongside the new API, then re-run`,
-		);
-		console.error(r.output);
+function surfaceNames(bundleText) {
+	const names = new Set();
+	for (const n of shellApiMemberNames(bundleText)) names.add(`v:${n}`);
+	for (const n of parseExportedTypes(bundleText)) {
+		if (!/^ShellApiV\d+$/.test(n)) names.add(`t:${n}`);
+	}
+	return names;
+}
+
+/**
+ * Is there an ACTIONABLE change vs the newest frozen version — i.e. a genuinely
+ * NEW exported name (value member or type)? Removals can't reach here (the floors
+ * fail shell-ui's build first), and the floors guarantee the candidate is a
+ * superset of the newest, so the only possibility is additions. A cosmetic edit
+ * (reordering, whitespace) or a floor-compatible type tweak leaves the name set
+ * unchanged and is therefore NOT actionable — no redundant version is minted.
+ *
+ * @param {number} prev - Newest existing version, or -1.
+ * @param {string} candidateBody - The freshly generated bundle body.
+ * @returns {boolean} True when a new name appeared since the newest version.
+ */
+function hasActionableChange(prev, candidateBody) {
+	if (prev < 0) return true; // no prior version — the first freeze is always actionable
+	const prevBody = extractBundleBody(fs.readFileSync(path.join(VERSIONS_DIR, `v${prev}.d.ts`), 'utf8'));
+	if (prevBody === null) return true;
+	const prevNames = surfaceNames(prevBody);
+	for (const n of surfaceNames(candidateBody)) {
+		if (!prevNames.has(n)) return true;
+	}
+	return false;
+}
+
+/**
+ * Auto-write the shell-api version into src/apiver.ts. Keeps `SHELL_API_VERSION`
+ * in lock-step with the newest frozen version with zero manual steps; the app
+ * registration step reads the same file to stamp each app's apps.json entry.
+ * Rewrites only the numeric literal.
+ *
+ * @param {number} n - The version number to write.
+ */
+function writeApiVersion(n) {
+	const src = fs.readFileSync(APIVER_TS, 'utf8');
+	const re = /export const SHELL_API_VERSION = \d+ as const;/;
+	if (!re.test(src)) {
+		console.error(`[shell:freeze] Could not find SHELL_API_VERSION literal in ${APIVER_TS}`);
 		cleanup();
 		process.exit(1);
 	}
-	log(`Compatibility gate passed: v${next} is backward-compatible with v${prev}.`);
+	fs.writeFileSync(APIVER_TS, src.replace(re, `export const SHELL_API_VERSION = ${n} as const;`));
 }
 
 /** Build the provenance header stamped onto each frozen version file. */
@@ -453,7 +485,15 @@ function regenerateBarrels(maxN) {
 		'/** Registry mapping each frozen shell API version number to its type snapshot. */',
 		`export interface ShellApiVersions {\n${mapEntries}\n}`,
 		'',
-		'/** The newest frozen shell API version. */',
+		'/**',
+		' * The newest frozen shell API version — a convenience alias for consumers.',
+		' *',
+		' * Accumulation is NOT an intersection of versions: that reduces nominal members',
+		' * (enums like ConnectionState) to `never`. The "nothing ever frozen can be',
+		" * removed\" guarantee is the per-version floors in shell-ui's",
+		' * contract-check.generated.ts, which assert the live surface still satisfies',
+		' * EACH frozen version separately.',
+		' */',
 		`export type ShellApiLatest = ShellApiVersions[${maxN}];`,
 		'',
 		"export * from './latest';",
@@ -485,40 +525,82 @@ function parseExportedTypes(candidateBody) {
 }
 
 /**
- * Step 7 — regenerate the conformance file compiled by shell-ui's own tsc. It
- * asserts the live api.ts surface still satisfies the frozen version; any
- * removed/narrowed member becomes a `tsc --noEmit` error.
+ * Map each individually-exported named type to the EARLIEST frozen version that
+ * declared it. Derived from the frozen version files (not the live surface), so a
+ * type REMOVED from api.ts is still in the map — its `Current_` import in the
+ * conformance file then fails, catching the removal. A regeneration cannot erase
+ * it without deleting a frozen version file.
  *
- * @param {number} next - The just-frozen version number.
- * @param {string[]} namedTypes - Individually-exported named types.
+ * @param {number} maxN - Newest frozen version number.
+ * @returns {Map<string, number>} type name -> earliest version that froze it.
  */
-function generateConformance(next, namedTypes) {
+function collectFrozenTypes(maxN) {
+	const earliest = new Map();
+	for (let v = 0; v <= maxN; v++) {
+		const p = path.join(VERSIONS_DIR, `v${v}.d.ts`);
+		if (!fs.existsSync(p)) continue;
+		for (const name of parseExportedTypes(fs.readFileSync(p, 'utf8'))) {
+			// The per-version shape alias is covered by the api.ts contract hold.
+			if (/^ShellApiV\d+$/.test(name)) continue;
+			if (!earliest.has(name)) earliest.set(name, v);
+		}
+	}
+	return earliest;
+}
+
+/**
+ * Step 7 — regenerate the conformance file compiled by shell-ui's own tsc.
+ *
+ * The live VALUE surface is held against the accumulated contract in api.ts
+ * (`_contractHold` = `ShellApiLatest`, the intersection of all versions). This
+ * file additionally pins every individually-exported TYPE against the earliest
+ * version that froze it, so a removed or narrowed type export becomes a
+ * `tsc --noEmit` error here. Types are drawn from the frozen files (accumulated),
+ * never from the live surface, so a removal cannot be erased by re-running.
+ *
+ * @param {number} maxN - Newest frozen version number.
+ */
+function generateConformance(maxN) {
+	const names = [...collectFrozenTypes(maxN).entries()];
+	const versions = [];
+	for (let v = 0; v <= maxN; v++) {
+		if (fs.existsSync(path.join(VERSIONS_DIR, `v${v}.d.ts`))) versions.push(v);
+	}
 	const lines = [];
 	lines.push('// =============================================================================');
 	lines.push('// contract-check.generated.ts');
 	lines.push('// =============================================================================');
 	lines.push('// GENERATED by `./builder shell:freeze` — do not edit by hand.');
 	lines.push('//');
-	lines.push(`// Proves shell-ui's live api.ts surface still conforms to frozen ShellApiV${next}.`);
-	lines.push('// A removed or narrowed member breaks this file under `tsc --noEmit`.');
+	lines.push('// Enforces the accumulated shell-api contract under shell-ui\'s own tsc:');
+	lines.push('//  - a per-version VALUE floor: the live surface must satisfy EACH frozen');
+	lines.push('//    version separately (per-version, not intersected — intersecting the');
+	lines.push('//    snapshots reduces nominal members like enums to `never`).');
+	lines.push('//  - a per-TYPE floor: each exported type, pinned to the earliest version');
+	lines.push('//    that froze it.');
+	lines.push('// Removing or narrowing anything ever frozen breaks this file. Floors are');
+	lines.push('// appended per freeze from the immutable versions/*.d.ts and never dropped.');
 	lines.push('// =============================================================================');
 	lines.push('');
-	// Imports first (module-level).
-	lines.push(`import type { ShellApiV${next} } from 'shell-api/versions/v${next}';`);
 	lines.push("import type { ShellApiShape } from './api';");
-	for (const name of namedTypes) {
-		lines.push(`import type { ${name} as Frozen_${name} } from 'shell-api/versions/v${next}';`);
+	for (const v of versions) {
+		lines.push(`import type { ShellApiV${v} } from 'shell-api/versions/v${v}';`);
+	}
+	for (const [name, v] of names) {
+		lines.push(`import type { ${name} as Frozen_${name} } from 'shell-api/versions/v${v}';`);
 		lines.push(`import type { ${name} as Current_${name} } from './api';`);
 	}
 	lines.push('');
-	lines.push('// The live shell API shape must remain assignable to the frozen contract.');
-	lines.push(`const _conformance: ShellApiV${next} = {} as ShellApiShape;`);
-	lines.push('void _conformance;');
+	lines.push('// VALUE floors — the live surface must still satisfy every frozen version.');
+	for (const v of versions) {
+		lines.push(`const _floor_v${v}: ShellApiV${v} = {} as ShellApiShape;`);
+		lines.push(`void _floor_v${v};`);
+	}
 	lines.push('');
-	lines.push('// Each individually-exported contract type must still be satisfied.');
-	for (const name of namedTypes) {
-		lines.push(`const _check_${name}: Frozen_${name} = {} as Current_${name};`);
-		lines.push(`void _check_${name};`);
+	lines.push('// TYPE floors — each frozen exported type must still be satisfied.');
+	for (const [name] of names) {
+		lines.push(`const _t_${name}: Frozen_${name} = {} as Current_${name};`);
+		lines.push(`void _t_${name};`);
 	}
 	lines.push('');
 	fs.writeFileSync(CONTRACT_CHECK, lines.join('\n'));
@@ -531,21 +613,40 @@ function generateConformance(next, namedTypes) {
 /** Orchestrates the freeze (or --check) run. */
 function main() {
 	const checkMode = process.argv.includes('--check');
+	const regenMode = process.argv.includes('--regen');
 
-	// Steps 1-4 are shared by both modes.
+	// --regen: reapply the accumulated barrels + conformance over the EXISTING
+	// versions without freezing a new one. Used when the contract MECHANISM
+	// changes (not the surface) — no candidate is generated, no version written.
+	if (regenMode) {
+		preCheck();
+		const { prev } = determineVersions();
+		if (prev < 0) {
+			log('No frozen versions to regenerate.');
+			return;
+		}
+		regenerateBarrels(prev);
+		generateConformance(prev);
+		log(`Regenerated index.ts + contract-check.generated.ts from v0..v${prev} (no new version).`);
+		return;
+	}
+
+	// Steps 1-4 are shared by check + freeze.
 	preCheck();
 	const candidateBody = generateCandidate();
 	const { next, prev } = determineVersions();
 
 	if (checkMode) {
-		// CI mode: never write; fail if the live surface drifted from newest.
+		// CI mode: never write; fail only on an ACTIONABLE drift (a new export the
+		// live surface has that the newest frozen version does not). A cosmetic or
+		// floor-compatible change is not flagged — it needs no freeze.
 		if (prev < 0) {
 			log('No frozen version exists yet — nothing to check.');
-		} else if (isNoOp(prev, candidateBody)) {
-			log(`Up to date with v${prev}.`);
+		} else if (!hasActionableChange(prev, candidateBody)) {
+			log(`Up to date with v${prev} (no actionable change).`);
 		} else {
 			console.error(
-				`[shell:freeze --check] Shell API changed without a freeze (differs from v${prev}). Run \`./builder shell:freeze\`.`,
+				`[shell:freeze --check] Shell API has new exports not in v${prev}. Run \`./builder shell:freeze\`.`,
 			);
 			cleanup();
 			process.exit(1);
@@ -554,24 +655,28 @@ function main() {
 		return;
 	}
 
-	// Full freeze.
-	if (isNoOp(prev, candidateBody)) {
-		log('nothing to freeze');
+	// Full freeze — append the next version only when the surface ACTUALLY grew.
+	// A cosmetic edit (reordering exports, whitespace) or a floor-compatible type
+	// tweak leaves the exported name set unchanged and mints no redundant version.
+	// (No compatibility gate: removals fail shell-ui's own tsc via the floors.)
+	if (!hasActionableChange(prev, candidateBody)) {
+		log('No actionable change to the shell API surface — nothing to freeze.');
 		cleanup();
 		return;
 	}
-	if (prev >= 0) compatibilityGate(prev, next, candidateBody);
 
 	writeVersion(next, candidateBody);
 	regenerateBarrels(next);
-	const namedTypes = parseExportedTypes(candidateBody);
-	generateConformance(next, namedTypes);
+	generateConformance(next);
+	writeApiVersion(next);
 	cleanup();
 
 	// Summary.
 	log(`Froze ShellApiV${next} -> packages/shell-api/versions/v${next}.d.ts`);
-	log(`Exported named types (${namedTypes.length}): ${namedTypes.join(', ')}`);
+	log(`Contract now accumulates v0..v${next} via per-version floors (nothing dropped).`);
+	log(`Bumped SHELL_API_VERSION -> ${next} in apps/shell-ui/src/apiver.ts.`);
 	log('Updated packages/shell-api/{latest.ts,index.ts} and apps/shell-ui/src/contract-check.generated.ts.');
+	log('Only apps/shell-ui/src/api.ts is hand-curated; everything else here is generated.');
 	log('Changes left uncommitted.');
 }
 

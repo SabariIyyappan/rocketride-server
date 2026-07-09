@@ -289,13 +289,9 @@ export const shellApi = {
  */
 export type ShellApiShape = typeof shellApi;
 
-/**
- * The current in-source shell API version.
- *
- * Incremented by each successful `shell:freeze` (which writes the next `vN`);
- * this constant tracks the highest frozen version the source currently targets.
- */
-export const SHELL_API_VERSION = 1 as const;
+// SHELL_API_VERSION lives in ./apiver.ts (its own file) so `shell:freeze` can
+// auto-write it and the app registration step can read it — and so it never
+// enters this frozen surface. shell-ui's index re-exports it from there.
 
 /**
  * Returns the curated shell API surface.

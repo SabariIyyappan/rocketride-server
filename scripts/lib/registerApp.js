@@ -49,6 +49,27 @@ const BUILD_APPS_JSON = path.join(BUILD_ROOT, 'apps.json');
 const DIST_APPS_JSON  = path.join(DIST_ROOT, 'server', 'static', 'apps.json');
 const APPS_BASE       = process.env.APPS_BASE_URL ?? 'apps';
 
+// Single source of truth for the shell contract version (freeze auto-writes it).
+const APIVER_TS = path.join(__dirname, '..', '..', 'apps', 'shell-ui', 'src', 'apiver.ts');
+
+/**
+ * Reads the current shell-api contract version from shell-ui's apiver.ts. Every
+ * app is built against the current shell, so we stamp this onto its apps.json
+ * entry — recording, across all registered apps, the lowest version still in use
+ * so obsolete frozen versions can be pruned safely. Returns null if unparseable
+ * (registration still proceeds without the field).
+ *
+ * @returns {number|null} The shell-api version, or null.
+ */
+function readShellApiVersion() {
+	try {
+		const m = /SHELL_API_VERSION\s*=\s*(\d+)/.exec(fs.readFileSync(APIVER_TS, 'utf-8'));
+		return m ? parseInt(m[1], 10) : null;
+	} catch {
+		return null;
+	}
+}
+
 // =============================================================================
 // HELPERS
 // =============================================================================
@@ -141,6 +162,9 @@ function registerApp(appRoot) {
 			// Derive moduleId from appId
 			const moduleId = appManifest.moduleId ?? toModuleId(appManifest.id);
 
+			// The shell contract version this app was built against.
+			const shellApiVersion = readShellApiVersion();
+
 			// Resolve app mode — default based on stripeProductId presence
 			const mode = appManifest.mode
 				?? (appManifest.stripeProductId ? 'subscription' : 'free');
@@ -221,6 +245,8 @@ function registerApp(appRoot) {
 				categories:    appManifest.categories ?? [],
 				settings:      appManifest.settings ?? [],
 				entry:         `/${APPS_BASE}/${dirName}/remoteEntry.js`,
+				// Shell contract version this app was built against (for prune analysis).
+				...(shellApiVersion !== null ? { shellApiVersion } : {}),
 				// App monetization mode
 				mode,
 				// Shell compatibility filter (omitted = all shells)

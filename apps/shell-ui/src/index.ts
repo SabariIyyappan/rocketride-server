@@ -205,7 +205,10 @@ export * from './icons/BoxIcon';
 // CURATED API SURFACE — versioned contract entry (see api.ts)
 // =============================================================================
 
-// One typed object bundling every shell-provided symbol apps consume, plus the
-// version marker. Frozen by `./builder shell:freeze` into packages/shell-api.
-export { getShellApi, SHELL_API_VERSION } from './api';
+// One typed object bundling every shell-provided symbol apps consume. Frozen by
+// `./builder shell:freeze` into packages/shell-api.
+export { getShellApi } from './api';
 export type { ShellApiShape } from './api';
+// The contract version — its own file so freeze can auto-write it (not part of
+// the frozen surface).
+export { SHELL_API_VERSION } from './apiver';
