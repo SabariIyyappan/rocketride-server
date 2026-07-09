@@ -266,6 +266,14 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build the rocketride SDK
+        # shared-ui/shell-ui import types from the `rocketride` workspace package,
+        # whose `types` entry points at dist/ — a build artifact. Without this
+        # step the shell:check tsc pre-check fails with TS2307 ("Cannot find
+        # module 'rocketride'") and ~50 cascading type errors on a fresh runner.
+        # Separate step (not chained into shell:check): the builder runs multiple
+        # targets in parallel, which would race the SDK build against the check.
+        run: node scripts/build.js client-typescript:build --verbose
       - name: shell:check — verify the shell-api contract is current & unbroken
         # Equivalent to `./builder shell:check`. Nonzero exit fails the PR.
         run: node scripts/build.js shell:check
