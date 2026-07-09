@@ -45,7 +45,7 @@ const CLOSE_GLYPH = '×';
 export interface IDetailPanelProps {
 	/** Whether the drawer is open. When false the component renders nothing. */
 	open: boolean;
-	/** Fired when the user dismisses the drawer (dim click, close glyph, Escape). */
+	/** Fired when the user dismisses the drawer (close glyph or Escape). */
 	onClose: () => void;
 	/** 42px round avatar/icon slot rendered at the start of the EntityHeader. */
 	avatar?: ReactNode;
@@ -252,15 +252,10 @@ export function DetailPanel({
 		return null;
 	}
 
-	// Close only when the dim area itself is clicked, never the panel body.
-	const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>): void => {
-		if (event.target === event.currentTarget) {
-			onClose();
-		}
-	};
-
 	return (
-		<div style={styles.overlay} onClick={handleOverlayClick}>
+		/* Dismissal is deliberate-only per the 2026-07-08 design decision: the
+		   close glyph or Escape — clicking the dim backdrop must NOT close. */
+		<div style={styles.overlay}>
 			<div style={styles.panel(width, entered)} role="dialog" aria-modal="true" aria-label={title}>
 				{/* Fixed EntityHeader: avatar slot + name/secondary + close glyph. */}
 				<div style={styles.header}>

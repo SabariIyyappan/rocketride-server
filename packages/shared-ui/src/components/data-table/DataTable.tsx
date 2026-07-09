@@ -17,8 +17,9 @@
  * change silently re-runs the CURRENT query, preserving page / sort / search.
  *
  * The footer (row count + page-size selector + pager) auto-hides when it would
- * add nothing: it is shown only when a search term is active OR the total spans
- * more than one page (`total > pageSize`). A single, unfiltered page hides it.
+ * add nothing: it is shown only when the current result set spans more than one
+ * page (`total > pageSize`) — filtered or not. A set that fits one page never
+ * shows a pager.
  *
  * The container draws no outer border of its own: it drops cleanly inside a
  * Card (noBodyPadding) or stands alone.
@@ -380,11 +381,12 @@ export function DataTable<Row>({
 	const isEmpty = !loading && total === 0;
 	// Total pages (at least one) for the pager.
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
-	// Footer visibility: a single unfiltered page needs neither a count nor a
-	// pager, so the whole footer hides when the result set fits one page AND no
-	// search term is active. Any committed search text or a multi-page total
-	// (total > pageSize) brings the footer back.
-	const showFooter = search.length > 0 || total > pageSize;
+	// Footer visibility: the footer exists to page — so it renders only when the
+	// current result set actually spans more than one page. Whether a search
+	// term is active is irrelevant (design-owner 2026-07-08: a filtered set that
+	// fits one page must not sprout a pager); the toolbar already shows the
+	// count.
+	const showFooter = total > pageSize;
 
 	return (
 		<div style={styles.container}>

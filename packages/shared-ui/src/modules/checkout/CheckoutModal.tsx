@@ -632,10 +632,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
 	// ── Render ───────────────────────────────────────────────────────────
 	return (
-		<div
-			style={{ ...commonStyles.modalOverlay, fontFamily: 'var(--rr-font-family)' }}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
+		/* Backdrop is inert: dismissal is deliberate-only (close button) per the
+		   2026-07-08 design decision — clicking outside must NOT close. */
+		<div style={{ ...commonStyles.modalOverlay, fontFamily: 'var(--rr-font-family)' }}>
 			<div style={S.modal}>
 				<button style={S.closeBtn} onClick={onClose} aria-label="Close">&times;</button>
 

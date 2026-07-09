@@ -68,7 +68,7 @@ const styles = {
 	} as CSSProperties,
 
 	// Base row — active and hover treatments are layered on top.
-	item: (active: boolean, hovered: boolean): CSSProperties => ({
+	item: (active: boolean, hovered: boolean, disabled: boolean): CSSProperties => ({
 		display: 'flex',
 		alignItems: 'center',
 		gap: 10,
@@ -76,8 +76,11 @@ const styles = {
 		padding: '7px 10px',
 		borderRadius: 7,
 		fontSize: 13,
-		color: 'var(--rr-text-primary)',
-		cursor: 'pointer',
+		// Disabled rows render muted with a default cursor and receive no hover
+		// or active treatment (both are skipped below); otherwise the standard
+		// primary tone with a pointer cursor.
+		color: disabled ? 'var(--rr-text-disabled)' : 'var(--rr-text-primary)',
+		cursor: disabled ? 'default' : 'pointer',
 		// Constant 1px border (transparent when inactive) so toggling the
 		// active pill never changes row height — no sibling reflow on select.
 		// Longhands only: mixing the border shorthand with a borderColor
@@ -87,16 +90,17 @@ const styles = {
 		borderStyle: 'solid',
 		borderColor: 'transparent',
 		// Active: the theme's standard list highlight (--rr-bg-list-active /
-		// --rr-fg-list-active) + bolder label. Border stays transparent.
-		...(active
+		// --rr-fg-list-active) + bolder label. Border stays transparent. Never
+		// applied to a disabled row.
+		...(!disabled && active
 			? {
 					background: 'var(--rr-bg-list-active)',
 					color: 'var(--rr-fg-list-active)',
 					fontWeight: 600,
 			  }
 			: null),
-		// Hover (non-active only): quiet list-hover fill.
-		...(!active && hovered ? { background: 'var(--rr-bg-list-hover)' } : null),
+		// Hover (non-active, non-disabled only): quiet list-hover fill.
+		...(!disabled && !active && hovered ? { background: 'var(--rr-bg-list-hover)' } : null),
 	}),
 
 	// Label fills the row so the badge right-aligns to the trailing edge.
@@ -107,19 +111,22 @@ const styles = {
 	// Leading icon slot on expanded rows (17px box matching the shell nav icons).
 	// Active rows inherit the selection foreground so the glyph stays legible
 	// on the highlight fill; inactive rows use the quiet secondary tone.
-	itemIcon: (active: boolean): CSSProperties => ({
+	itemIcon: (active: boolean, disabled: boolean): CSSProperties => ({
 		display: 'inline-flex',
 		alignItems: 'center',
 		justifyContent: 'center',
 		width: 17,
 		height: 17,
 		flexShrink: 0,
-		color: active ? 'inherit' : 'var(--rr-text-secondary)',
+		// Disabled and active rows let the glyph inherit the row colour (the
+		// muted disabled tone / the selection foreground); inactive rows use
+		// the quiet secondary tone.
+		color: disabled || active ? 'inherit' : 'var(--rr-text-secondary)',
 	}),
 
 	// Collapsed (icon-rail) row: square, centered icon target with the same
 	// active-pill treatment; the badge overlays the top-right corner.
-	itemCollapsed: (active: boolean, hovered: boolean): CSSProperties => ({
+	itemCollapsed: (active: boolean, hovered: boolean, disabled: boolean): CSSProperties => ({
 		position: 'relative',
 		display: 'flex',
 		alignItems: 'center',
@@ -128,20 +135,23 @@ const styles = {
 		height: 36,
 		margin: '2px auto',
 		borderRadius: 7,
-		color: 'var(--rr-text-primary)',
-		cursor: 'pointer',
+		// Disabled rows render muted with a default cursor and no hover/active
+		// treatment (both skipped below); otherwise the standard primary tone.
+		color: disabled ? 'var(--rr-text-disabled)' : 'var(--rr-text-primary)',
+		cursor: disabled ? 'default' : 'pointer',
 		// Longhands only — see styles.item for why the shorthand is avoided.
 		borderWidth: 1,
 		borderStyle: 'solid',
 		borderColor: 'transparent',
-		// Active: the theme's standard list highlight (see styles.item).
-		...(active
+		// Active: the theme's standard list highlight (see styles.item). Never
+		// applied to a disabled row.
+		...(!disabled && active
 			? {
 					background: 'var(--rr-bg-list-active)',
 					color: 'var(--rr-fg-list-active)',
 			  }
 			: null),
-		...(!active && hovered ? { background: 'var(--rr-bg-list-hover)' } : null),
+		...(!disabled && !active && hovered ? { background: 'var(--rr-bg-list-hover)' } : null),
 	}),
 
 	// First-letter fallback glyph for entries that declare no icon.
@@ -185,9 +195,12 @@ export function SidebarMenu({ menu, activeId, onSelect, sectionLabel, collapsed 
 			{/* Optional section header naming the owning section (expanded only). */}
 			{!isCollapsed && sectionLabel && <div style={styles.sectionLabel}>{sectionLabel}</div>}
 			{menu.entries.map((entry) => {
-				// Resolve per-row state for the composed style.
+				// Resolve per-row state for the composed style. A disabled entry
+				// renders muted, takes no hover/active treatment, and its click
+				// is swallowed (never calls onSelect).
 				const isActive = entry.id === activeId;
 				const isHovered = entry.id === hoveredId;
+				const isDisabled = entry.disabled === true;
 
 				// Collapsed icon rail: icon-only square with tooltip + badge overlay.
 				if (isCollapsed) {
@@ -195,8 +208,8 @@ export function SidebarMenu({ menu, activeId, onSelect, sectionLabel, collapsed 
 						<div
 							key={entry.id}
 							title={entry.label}
-							style={styles.itemCollapsed(isActive, isHovered)}
-							onClick={() => onSelect(entry.id)}
+							style={styles.itemCollapsed(isActive, isHovered, isDisabled)}
+							onClick={() => { if (!isDisabled) onSelect(entry.id); }}
 							onMouseEnter={() => setHoveredId(entry.id)}
 							onMouseLeave={() => setHoveredId(null)}
 						>
@@ -214,13 +227,13 @@ export function SidebarMenu({ menu, activeId, onSelect, sectionLabel, collapsed 
 				return (
 					<div
 						key={entry.id}
-						style={styles.item(isActive, isHovered)}
-						onClick={() => onSelect(entry.id)}
+						style={styles.item(isActive, isHovered, isDisabled)}
+						onClick={() => { if (!isDisabled) onSelect(entry.id); }}
 						onMouseEnter={() => setHoveredId(entry.id)}
 						onMouseLeave={() => setHoveredId(null)}
 					>
 						{/* Optional leading icon — same glyph the collapsed rail shows. */}
-						{entry.icon && <span style={styles.itemIcon(isActive)}>{entry.icon}</span>}
+						{entry.icon && <span style={styles.itemIcon(isActive, isDisabled)}>{entry.icon}</span>}
 						<span style={styles.label}>{entry.label}</span>
 						{/* Right-aligned count badge when the entry declares a count. */}
 						{entry.count != null && <ViewMenuBadge count={entry.count} severity={entry.severity} />}

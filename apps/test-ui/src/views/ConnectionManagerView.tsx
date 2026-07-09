@@ -101,6 +101,18 @@ const styles = {
 	// FORM MODAL (short form — stays a modal per the style guide)
 	// =========================================================================
 
+	// Borderless close glyph rendered at the trailing edge of the modal header.
+	// Acts as Cancel (2026-07-08 popup-dismissal decision).
+	modalClose: {
+		cursor: 'pointer',
+		color: 'var(--rr-text-disabled)',
+		fontSize: 18,
+		lineHeight: 1,
+		padding: '0 2px',
+		background: 'none',
+		border: 'none',
+	} as CSSProperties,
+
 	formField: {
 		display: 'flex',
 		flexDirection: 'column',
@@ -255,10 +267,14 @@ const ConnectionManagerView: React.FC = () => {
 
 			{/* ── Add / Edit form modal (short form) ────────────────────────── */}
 			{form && (
-				<div style={commonStyles.modalOverlay} onClick={handleCancel}>
-					<div style={commonStyles.modalDialog} onClick={(e) => e.stopPropagation()}>
+				/* Backdrop is inert: dismissal is deliberate-only (✕ / Cancel) per
+				   the 2026-07-08 design decision — clicking outside must NOT close. */
+				<div style={commonStyles.modalOverlay}>
+					<div style={commonStyles.modalDialog}>
 						<div style={commonStyles.modalHeader}>
 							{form.mode.type === 'add' ? 'New Connection' : 'Edit Connection'}
+							{/* Top-right close button — same action as Cancel. */}
+							<button type="button" style={styles.modalClose} onClick={handleCancel} aria-label="Close">✕</button>
 						</div>
 
 						<div style={commonStyles.modalBody}>

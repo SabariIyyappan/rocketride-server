@@ -42,13 +42,17 @@ const S = {
 		color: 'var(--rr-text-primary)',
 		overflow: 'hidden',
 	} as CSSProperties,
+	// No top border: the Explorer is often the first/only sidebar section (the
+	// File Explorer app, the vscode Pipelines panel), where a top border drew a
+	// stray line under the shell app label. Design-owner decision 2026-07-08:
+	// remove it entirely; where the Explorer follows another section (rocket-ui's
+	// SidebarMenu) the separation is carried by spacing.
 	sectionHeader: {
 		display: 'flex',
 		alignItems: 'center',
 		gap: 0,
 		padding: '6px 12px 4px',
 		flexShrink: 0,
-		borderTop: '1px solid var(--rr-border)',
 	} as CSSProperties,
 	sectionLabel: {
 		...commonStyles.labelUppercase,
@@ -821,7 +825,7 @@ export const Explorer: React.FC<IExplorerProps> = ({ config, entries, statuses =
 												onChildAction(chRunning ? 'stop' : 'run', file.path, ch.id, file.documentId);
 											}}
 										>
-											{chRunning ? <BxStop size={14} /> : <BxPlay size={14} />}
+											{chRunning ? <BxStop size={16} /> : <BxPlay size={16} />}
 										</button>
 									)}
 								</div>

@@ -43,12 +43,15 @@ export interface IPageViewControlProps {
 
 const styles = {
 	// The strip — snug row of tabs at the very top of the view's content column.
+	// The 5px top margin breathes it off whatever sits above (DocTabs, dialog
+	// edge, breadcrumb) — design-owner decision 2026-07-08.
 	strip: {
 		flex: 'none',
 		display: 'flex',
 		alignItems: 'stretch',
 		gap: 2,
 		height: 38,
+		marginTop: 5,
 		padding: '0 10px',
 		borderBottom: '1px solid var(--rr-border)',
 		background: 'var(--rr-bg-default)',

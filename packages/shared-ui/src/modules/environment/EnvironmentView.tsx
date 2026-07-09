@@ -23,6 +23,7 @@ import React, { useCallback, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { TabPanelContent } from '../../components/tab-panel/TabPanelContent';
 import { PageViewControl } from '../../components/page-view-control/PageViewControl';
+import { ContentHeader } from '../../components/content-header/ContentHeader';
 import type { ITabPanelPanel } from '../../components/tab-panel/TabPanelContent';
 import type { ViewMenu } from '../../types/viewMenu';
 import { commonStyles } from '../../themes/styles';
@@ -280,8 +281,12 @@ const EnvironmentView: React.FC<EnvironmentViewProps> = ({
 	if (slots.length === 0) {
 		return (
 			<div style={styles.container}>
+				<ContentHeader
+					title="Environment Variables"
+					subtitle="Key–value variables injected into your pipelines at run time. Scopes cascade — a user variable overrides the same key on the team, which overrides the organization."
+				/>
 				{error && <div style={styles.errorBanner}>{error}</div>}
-				<div style={{ padding: 16, color: 'var(--rr-text-secondary)', fontFamily: 'var(--rr-font-family)' }}>
+				<div style={{ padding: '16px 24px', color: 'var(--rr-text-secondary)', fontFamily: 'var(--rr-font-family)' }}>
 					No connection slots available.
 				</div>
 			</div>
@@ -290,7 +295,13 @@ const EnvironmentView: React.FC<EnvironmentViewProps> = ({
 
 	return (
 		<div style={styles.container}>
-			{/* Page strip — first element of the content column (multi-slot only). */}
+			{/* Page heading — what this page is and how the scopes interact. */}
+			<ContentHeader
+				title="Environment Variables"
+				subtitle="Key–value variables injected into your pipelines at run time. Scopes cascade — a user variable overrides the same key on the team, which overrides the organization."
+			/>
+
+			{/* Page strip — connection-slot tabs (multi-slot only). */}
 			{viewMenu && <PageViewControl menu={viewMenu} activeId={activeTab} onSelect={setActiveTab} />}
 
 			{/* Page-level error banner */}

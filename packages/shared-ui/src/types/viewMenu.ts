@@ -63,6 +63,11 @@ export interface ViewMenuEntry {
 	 * Entries without an icon fall back to a first-letter glyph.
 	 */
 	icon?: ReactNode;
+	/**
+	 * When true, the entry renders muted and is not selectable — used by
+	 * SidebarMenu; ignored by PageViewControl.
+	 */
+	disabled?: boolean;
 }
 
 // =============================================================================

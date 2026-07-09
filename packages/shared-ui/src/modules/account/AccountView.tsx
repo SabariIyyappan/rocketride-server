@@ -21,6 +21,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { TabPanelContent } from '../../components/tab-panel/TabPanelContent';
 import { PageViewControl } from '../../components/page-view-control/PageViewControl';
+import { ContentHeader } from '../../components/content-header/ContentHeader';
 import { commonStyles } from '../../themes/styles';
 import type { ITabPanelPanel } from '../../components/tab-panel/TabPanelContent';
 import type { ViewMenu } from '../../types/viewMenu';
@@ -731,38 +732,53 @@ const AccountView: React.FC<IAccountViewProps> = (props) => {
 		() => ({
 			profile: {
 				content: (
-					<div style={commonStyles.tabContent}>
+					<>
+						{/* Page heading — below the strip, per the style guide (tabs first, title inside each page). */}
+						<ContentHeader title="Profile" subtitle="Your identity, sign-in, and defaults for this account." />
+						<div style={commonStyles.tabContent}>
 						{sectionError && <p style={{ color: 'var(--rr-color-error)', fontSize: 13, marginBottom: 12 }}>{sectionError}</p>}
 						<ProfilePanel profile={profile} authUser={authUser} onSave={onSaveProfile} onSetDefaultTeam={onSetDefaultTeam} onSetDefaultOrg={onSetDefaultOrg} onLogout={onLogout} onDeleteAccount={onDeleteAccount} />
-					</div>
+						</div>
+					</>
 				),
 			},
 			billing: {
 				content: (
-					<div style={commonStyles.tabContent}>
+					<>
+						<ContentHeader title="Billing" subtitle="Subscriptions, account balance, and payment methods." />
+						<div style={commonStyles.tabContent}>
 						<BillingPanel isConnected={isConnected} subscriptions={subscriptions} loading={billingLoading} error={billingError} creditBalance={creditBalance} apps={apps} onCancelSubscription={openCancelSub} onOpenPortal={handlePortal} isOrgAdmin={isOrgAdmin} onSubscribe={onSubscribe} transactions={transactions} usageByUser={usageByUser} usageByTeam={usageByTeam} activeTasks={activeTasks} dashboardLoading={dashboardLoading} onTransactionPage={onTransactionPage} topupPlans={topupPlans} onBuyTopup={onBuyTopup} allPlans={allPlans} onPurchaseTopup={onPurchaseTopup} memberNames={memberNames} teamNames={teamNames} onUpgradeSubscription={onUpgradeSubscription} />
-					</div>
+						</div>
+					</>
 				),
 			},
 			'api-keys': {
 				content: (
-					<div style={commonStyles.tabContent}>
+					<>
+						<ContentHeader title="API Keys" subtitle="Create and revoke keys for programmatic access." />
+						<div style={commonStyles.tabContent}>
 						{sectionError && <p style={{ color: 'var(--rr-color-error)', fontSize: 13, marginBottom: 12 }}>{sectionError}</p>}
 						<ApiKeysPanel keys={keys} onCreateKey={openCreateKey} onRevokeKey={openRevokeKey} />
-					</div>
+						</div>
+					</>
 				),
 			},
 			organization: {
 				content: (
-					<div style={commonStyles.tabContent}>
+					<>
+						<ContentHeader title="Organization" subtitle="Your organization's name and settings." />
+						<div style={commonStyles.tabContent}>
 						{sectionError && <p style={{ color: 'var(--rr-color-error)', fontSize: 13, marginBottom: 12 }}>{sectionError}</p>}
 						<OrganizationPanel org={org} onSave={onSaveOrgName} isOrgAdmin={isOrgAdmin} />
-					</div>
+						</div>
+					</>
 				),
 			},
 			teams: {
 				content: (
-					<div style={commonStyles.tabContent}>
+					<>
+						<ContentHeader title="Teams" subtitle="Group members and scope their permissions." />
+						<div style={commonStyles.tabContent}>
 						{sectionError && <p style={{ color: 'var(--rr-color-error)', fontSize: 13, marginBottom: 12 }}>{sectionError}</p>}
 						<TeamsPanel
 							teams={teams}
@@ -790,15 +806,19 @@ const AccountView: React.FC<IAccountViewProps> = (props) => {
 							isOrgAdmin={isOrgAdmin}
 							isTeamAdmin={isActiveTeamAdmin}
 						/>
-					</div>
+						</div>
+					</>
 				),
 			},
 			members: {
 				content: (
-					<div style={commonStyles.tabContent}>
+					<>
+						<ContentHeader title="Members" subtitle="Everyone in this organization and their roles." />
+						<div style={commonStyles.tabContent}>
 						{sectionError && <p style={{ color: 'var(--rr-color-error)', fontSize: 13, marginBottom: 12 }}>{sectionError}</p>}
 						<MembersPanel org={org} members={members} profile={profile} onInvite={openInvite} onChangeRole={openChangeRole} onRemove={openRemoveMember} onResendInvite={(m) => onResendInvite(m.userId)} isOrgAdmin={isOrgAdmin} />
-					</div>
+						</div>
+					</>
 				),
 			},
 		}),

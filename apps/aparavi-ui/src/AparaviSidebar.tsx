@@ -26,9 +26,9 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { useShellConnection, useSidebarContent, NavButton, BxPlus } from 'shell-ui';
-import { Explorer, useSidebarCollapsed } from 'shared';
-import type { ExplorerEntry, ExplorerConfig, IVirtualFileSystem } from 'shared';
+import { useShellConnection, useSidebarContent, BxPlus } from 'shell-ui';
+import { Explorer, SidebarMenu, useSidebarCollapsed } from 'shared';
+import type { ExplorerEntry, ExplorerConfig, IVirtualFileSystem, ViewMenu } from 'shared';
 import { getDocs } from './docs';
 import { listChatDir, saveChat, deleteChat, renameChat } from './chatStore';
 
@@ -77,6 +77,19 @@ const NOOP_VFS: IVirtualFileSystem = {
 	rename: async () => {},
 	delete: async () => {},
 	mkdir: async () => {},
+};
+
+// =============================================================================
+// NAV MENU
+// =============================================================================
+
+/**
+ * The "New Chat" action rendered above the file tree as a stock SidebarMenu
+ * (a single entry with no persistent selection). The sidebar content is hidden
+ * while collapsed by the gate below, so this menu always renders expanded.
+ */
+const NEW_CHAT_MENU: ViewMenu = {
+	entries: [{ id: 'new', label: 'New Chat', icon: <BxPlus size={16} /> }],
 };
 
 // =============================================================================
@@ -234,9 +247,10 @@ const AparaviSidebar: React.FC = () => {
 	// no collapsed icon rail is drawn here (models-ui / rocket-ui pattern).
 	const content = (
 		<div style={styles.sidebar}>
-			{/* New Chat button */}
+			{/* New Chat action (stock SidebarMenu, single entry). activeId='' —
+			    no persistent selection; the id guard keeps the handler typed. */}
 			<div style={styles.newChatRow}>
-				<NavButton icon={BxPlus} label="New Chat" collapsed={false} onClick={handleNewChat} />
+				<SidebarMenu menu={NEW_CHAT_MENU} activeId="" onSelect={(id) => { if (id === 'new') handleNewChat(); }} />
 			</div>
 
 			{/* Chat file tree (shared Explorer component) */}

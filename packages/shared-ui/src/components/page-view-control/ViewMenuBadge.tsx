@@ -45,16 +45,23 @@ const styles = {
 		fontWeight: 700,
 	} as CSSProperties,
 
-	// Neutral treatment — a quiet count chip.
+	// Neutral treatment — a quiet count chip. The 1px --rr-border outline keeps
+	// the pill visible in themes whose --rr-bg-widget-header resolves to (near-)
+	// transparent — e.g. the vscode webviews map it to
+	// --vscode-sideBarSectionHeader-background, which is invisible on the strip
+	// in the VS Code light theme.
 	neutral: {
 		background: 'var(--rr-bg-widget-header)',
 		color: 'var(--rr-text-secondary)',
+		border: '1px solid var(--rr-border)',
 	} as CSSProperties,
 
-	// Error treatment — a filled state chip.
+	// Error treatment — a filled state chip. Border matches the fill so both
+	// treatments box out to the same size.
 	error: {
 		background: 'var(--rr-color-error)',
 		color: 'var(--rr-fg-button)',
+		border: '1px solid var(--rr-color-error)',
 	} as CSSProperties,
 };
 

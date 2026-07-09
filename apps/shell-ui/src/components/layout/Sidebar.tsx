@@ -469,7 +469,7 @@ const Sidebar: React.FC<SidebarProps> = ({ themeConfig: _themeConfig, account, h
 			    HEADER — AppSwitcherButton + collapse toggle
 			    ================================================================ */}
 			<div
-				style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : undefined, height: 52, padding: collapsed ? '8px 8px 0' : '8px 12px 0', flexShrink: 0 }}
+				style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : undefined, height: 52, padding: collapsed ? '8px 8px 0' : '8px 12px 0', flexShrink: 0, marginBottom: 10 }}
 				onMouseEnter={() => setHeaderHover(true)}
 				onMouseLeave={() => setHeaderHover(false)}
 			>

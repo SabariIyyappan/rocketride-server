@@ -145,10 +145,12 @@ export const OverlayManager: React.FC<OverlayManagerProps> = ({ children }) => {
 
 			{/* Shell-owned overlays render as modal dialogs over client area.
 			    Pages render directly; views with sub-views draw their own
-			    PageViewControl strip at the top of the dialog. */}
+			    PageViewControl strip at the top of the dialog. Dismissal is
+			    deliberate only (design-owner decision 2026-07-08): the ✕ button
+			    or Escape — clicking the backdrop must NOT close the dialog. */}
 			{overlay !== null && (
-				<div style={styles.backdrop} onClick={closeOverlay}>
-					<div style={styles.dialog} onClick={(e) => e.stopPropagation()}>
+				<div style={styles.backdrop}>
+					<div style={styles.dialog}>
 						<button style={styles.dialogClose} onClick={closeOverlay}>✕</button>
 						{overlay === 'account' && <AccountPage />}
 						{overlay === 'settings' && <SettingsPage />}
