@@ -211,12 +211,14 @@ const shellContractModule = {
 	description: 'Shell API contract',
 
 	actions: [
+		// Internal leaf actions (no description — not shown in builder --help).
+		// Both public composites below chain `client-typescript:build` ahead of
+		// these: the freeze script's tsc pre-check type-checks shared-ui, whose
+		// `rocketride` imports resolve to the SDK's dist/types — a build artifact
+		// that fresh clones and CI runners do not have yet.
 		{
-			// Freeze the shell-api contract: bundle src/api.ts into the next
-			// packages/shell-api/versions/vN and regenerate the conformance file.
-			name: 'shell:freeze',
+			name: 'shell:freeze-run',
 			action: () => ({
-				description: 'Freeze the shell-api contract',
 				run: async (ctx, task) => {
 					const script = path.join(APP_ROOT, 'scripts', 'freeze-shell-api.js');
 					const args = [script];
@@ -227,16 +229,31 @@ const shellContractModule = {
 			}),
 		},
 		{
+			name: 'shell:check-run',
+			action: () => ({
+				run: async (ctx, task) => {
+					const script = path.join(APP_ROOT, 'scripts', 'freeze-shell-api.js');
+					await execCommand('node', [script, '--check'], { task, cwd: APP_ROOT });
+				},
+			}),
+		},
+		{
+			// Freeze the shell-api contract: bundle src/api.ts into the next
+			// packages/shell-api/versions/vN and regenerate the conformance file.
+			name: 'shell:freeze',
+			action: () => ({
+				description: 'Freeze the shell-api contract',
+				steps: ['client-typescript:build', 'shell:freeze-run'],
+			}),
+		},
+		{
 			// CI mode: verify the live surface has not drifted from the newest
 			// frozen version, without writing anything. Nonzero exit on drift.
 			// The preferred spelling — replaces `shell:freeze --check`.
 			name: 'shell:check',
 			action: () => ({
 				description: 'Check the shell-api contract is current (no write)',
-				run: async (ctx, task) => {
-					const script = path.join(APP_ROOT, 'scripts', 'freeze-shell-api.js');
-					await execCommand('node', [script, '--check'], { task, cwd: APP_ROOT });
-				},
+				steps: ['client-typescript:build', 'shell:check-run'],
 			}),
 		},
 	],
