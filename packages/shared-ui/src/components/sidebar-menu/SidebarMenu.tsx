@@ -190,6 +190,22 @@ export function SidebarMenu({ menu, activeId, onSelect, sectionLabel, collapsed 
 	const ctxCollapsed = useSidebarCollapsed();
 	const isCollapsed = collapsed ?? ctxCollapsed;
 
+	/**
+	 * Enter / Space activation for a row, matching native button semantics. A
+	 * disabled row ignores the keypress, mirroring its swallowed click.
+	 *
+	 * @param e - The keydown event.
+	 * @param id - The entry id to select.
+	 * @param disabled - Whether the row is disabled.
+	 */
+	const onItemKeyDown = (e: React.KeyboardEvent, id: string, disabled: boolean): void => {
+		if (disabled) return;
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			onSelect(id);
+		}
+	};
+
 	return (
 		<div style={styles.container}>
 			{/* Optional section header naming the owning section (expanded only). */}
@@ -208,8 +224,14 @@ export function SidebarMenu({ menu, activeId, onSelect, sectionLabel, collapsed 
 						<div
 							key={entry.id}
 							title={entry.label}
+							role="button"
+							aria-label={entry.label}
+							aria-current={isActive || undefined}
+							aria-disabled={isDisabled || undefined}
+							tabIndex={isDisabled ? -1 : 0}
 							style={styles.itemCollapsed(isActive, isHovered, isDisabled)}
 							onClick={() => { if (!isDisabled) onSelect(entry.id); }}
+							onKeyDown={(e) => onItemKeyDown(e, entry.id, isDisabled)}
 							onMouseEnter={() => setHoveredId(entry.id)}
 							onMouseLeave={() => setHoveredId(null)}
 						>
@@ -227,8 +249,13 @@ export function SidebarMenu({ menu, activeId, onSelect, sectionLabel, collapsed 
 				return (
 					<div
 						key={entry.id}
+						role="button"
+						aria-current={isActive || undefined}
+						aria-disabled={isDisabled || undefined}
+						tabIndex={isDisabled ? -1 : 0}
 						style={styles.item(isActive, isHovered, isDisabled)}
 						onClick={() => { if (!isDisabled) onSelect(entry.id); }}
+						onKeyDown={(e) => onItemKeyDown(e, entry.id, isDisabled)}
 						onMouseEnter={() => setHoveredId(entry.id)}
 						onMouseLeave={() => setHoveredId(null)}
 					>

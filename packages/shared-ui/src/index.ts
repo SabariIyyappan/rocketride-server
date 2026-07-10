@@ -140,6 +140,12 @@ export { MiniCard, MiniContainer } from './components/mini-card/MiniCard';
 export type { IMiniCardProps, IMiniContainerProps } from './components/mini-card/MiniCard';
 export { ConnectionCard, ConnectionCardAdd } from './components/connection-card/ConnectionCard';
 export type { IConnectionCardProps, IConnectionCardAddProps } from './components/connection-card/ConnectionCard';
+export { ConnectionManagerView } from './modules/connection-manager/ConnectionManagerView';
+export type {
+	IConnectionManagerViewProps,
+	IConnectionCardDisplay,
+	IConnectionFormField,
+} from './modules/connection-manager/ConnectionManagerView';
 export { Section, LabelValue } from './components/section/Section';
 export type { ISectionProps, ILabelValueProps } from './components/section/Section';
 export { DetailPanel } from './components/detail-panel/DetailPanel';

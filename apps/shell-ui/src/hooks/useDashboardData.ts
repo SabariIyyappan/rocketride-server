@@ -29,7 +29,7 @@
 // re-mounting or re-fetching.
 // =============================================================================
 
-import { useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useCallback, useSyncExternalStore } from 'react';
 import { useShellConnection } from '../connection/ConnectionContext';
 import { ConnectionManager } from '../connection/connection';
 import { getClient } from '../lib/getClient';
@@ -58,6 +58,17 @@ let _refCount = 0;
 let _intervalId: ReturnType<typeof setInterval> | null = null;
 let _eventUnsub: (() => void) | null = null;
 const _listeners = new Set<() => void>();
+
+// Single source of truth for the singleton's run state, so the two lifecycle
+// inputs (does anyone want data? is the shell connected?) can never desync. The
+// previous per-hook `startedRef` could be left stranded `true` after a
+// refCount-driven `_stop()` (e.g. React.StrictMode's mount→unmount→remount),
+// permanently killing polling. `_reconcile()` derives the desired state from
+// these two flags instead.
+/** Whether the singleton is currently polling + subscribed. */
+let _started = false;
+/** Last-known shell connection state, mirrored from consumers. */
+let _connected = false;
 
 /** Immutable snapshot shape shared with subscribers via useSyncExternalStore. */
 interface DashboardSnapshot {
@@ -127,6 +138,24 @@ function _stop(): void {
 	}
 }
 
+/**
+ * Start or stop the singleton so it runs exactly when it should: there is at
+ * least one live consumer AND the shell is connected. Idempotent — called from
+ * both the ref-count effect and the connection-state effect; only a real
+ * transition touches the timer/subscription.
+ */
+function _reconcile(): void {
+	// Poll only while something is mounted to receive the data and we can fetch.
+	const shouldRun = _refCount > 0 && _connected;
+	if (shouldRun && !_started) {
+		_started = true;
+		_start();
+	} else if (!shouldRun && _started) {
+		_started = false;
+		_stop();
+	}
+}
+
 // =============================================================================
 // RETURN TYPE
 // =============================================================================
@@ -155,7 +184,6 @@ export interface DashboardData {
  */
 export function useDashboardData(): DashboardData {
 	const { isConnected } = useShellConnection();
-	const startedRef = useRef(false);
 
 	// Subscribe to module-level state changes via useSyncExternalStore.
 	// The snapshot function returns a stable reference (_snapshot) that is
@@ -165,28 +193,24 @@ export function useDashboardData(): DashboardData {
 		() => _snapshot,
 	);
 
-	// Ref-count: start on first mount, stop when last consumer unmounts
+	// Ref-count consumers; reconcile on every mount/unmount so the singleton
+	// runs only while at least one consumer is alive. Reconcile (not a raw
+	// _stop()) so a StrictMode remount re-derives the correct run state instead
+	// of leaving polling dead.
 	useEffect(() => {
 		_refCount++;
-
+		_reconcile();
 		return () => {
-			_refCount--;
-			if (_refCount <= 0) {
-				_stop();
-				_refCount = 0;
-			}
+			_refCount = Math.max(0, _refCount - 1);
+			_reconcile();
 		};
 	}, []);
 
-	// Start/stop based on connection state
+	// Mirror the shell connection state into the singleton and reconcile, so
+	// polling starts on connect and stops on disconnect.
 	useEffect(() => {
-		if (isConnected && !startedRef.current) {
-			startedRef.current = true;
-			_start();
-		} else if (!isConnected && startedRef.current) {
-			startedRef.current = false;
-			_stop();
-		}
+		_connected = isConnected;
+		_reconcile();
 	}, [isConnected]);
 
 	/** Manually refresh the dashboard data. */

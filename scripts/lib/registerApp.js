@@ -52,22 +52,33 @@ const APPS_BASE       = process.env.APPS_BASE_URL ?? 'apps';
 // Single source of truth for the shell contract version (freeze auto-writes it).
 const APIVER_TS = path.join(__dirname, '..', '..', 'apps', 'shell-ui', 'src', 'apiver.ts');
 
+// Memoized across calls: apiver.ts is process-global and does not change during
+// a build run, so it is read and parsed once (including a memoized null). This
+// also guarantees every app registered in one run is stamped with an identical
+// version even if the file were somehow rewritten mid-build. `undefined` = not
+// yet read; a number or `null` = the settled result.
+let _shellApiVersionCache;
+
 /**
  * Reads the current shell-api contract version from shell-ui's apiver.ts. Every
  * app is built against the current shell, so we stamp this onto its apps.json
  * entry — recording, across all registered apps, the lowest version still in use
- * so obsolete frozen versions can be pruned safely. Returns null if unparseable
- * (registration still proceeds without the field).
+ * so obsolete frozen versions can be pruned safely. The result is cached after
+ * the first call. Returns null if unparseable (registration still proceeds
+ * without the field).
  *
  * @returns {number|null} The shell-api version, or null.
  */
 function readShellApiVersion() {
+	// Return the memoized result (including a memoized null) after the first read.
+	if (_shellApiVersionCache !== undefined) return _shellApiVersionCache;
 	try {
 		const m = /SHELL_API_VERSION\s*=\s*(\d+)/.exec(fs.readFileSync(APIVER_TS, 'utf-8'));
-		return m ? parseInt(m[1], 10) : null;
+		_shellApiVersionCache = m ? parseInt(m[1], 10) : null;
 	} catch {
-		return null;
+		_shellApiVersionCache = null;
 	}
+	return _shellApiVersionCache;
 }
 
 // =============================================================================

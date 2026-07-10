@@ -277,15 +277,25 @@ export function DetailPanel({
 
 				{/* Optional underline tab strip; count badges reuse ViewMenuBadge. */}
 				{tabs != null && tabs.length > 0 && (
-					<div style={styles.tabs}>
+					<div style={styles.tabs} role="tablist">
 						{tabs.map((entry) => {
 							// The active tab carries the brand colour + underline.
 							const isActive = entry.id === activeTab;
 							return (
 								<div
 									key={entry.id}
+									role="tab"
+									aria-selected={isActive}
+									tabIndex={0}
 									style={styles.tab(isActive)}
 									onClick={() => onTabSelect?.(entry.id)}
+									onKeyDown={(e) => {
+										// Enter / Space activate the tab, matching native button semantics.
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											onTabSelect?.(entry.id);
+										}
+									}}
 								>
 									{entry.label}
 									{/* Count badge when the entry declares a count. */}

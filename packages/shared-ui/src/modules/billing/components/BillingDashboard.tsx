@@ -489,6 +489,14 @@ const UsageLeaderboard: React.FC<{ usageByUser: UsageRollup[]; usageByTeam: Usag
 // =============================================================================
 
 /**
+ * Watchdog for a parked page request: if the host never feeds the requested
+ * page (e.g. its fetch errored and it never updates `transactions`), the parked
+ * promise is rejected after this long so the DataTable clears its loading row
+ * instead of spinning forever.
+ */
+const PAGE_FETCH_TIMEOUT_MS = 15000;
+
+/**
  * Paginated transaction log with user name resolution.
  *
  * The data is server-paged THROUGH PROPS: the host owns the fetch and hands
@@ -511,8 +519,14 @@ const TransactionLog: React.FC<{ transactions: TransactionsResult | null; onPage
 	txRef.current = transactions;
 	const onPageRef = useRef(onPageChange);
 	onPageRef.current = onPageChange;
-	// The one in-flight page request the table is waiting on, if any.
-	const pendingRef = useRef<{ page: number; resolve: (p: DataPage<LedgerTransaction>) => void } | null>(null);
+	// The one in-flight page request the table is waiting on, if any, plus its
+	// watchdog timer so a never-arriving page can't hang the table.
+	const pendingRef = useRef<{
+		page: number;
+		resolve: (p: DataPage<LedgerTransaction>) => void;
+		reject: (e: unknown) => void;
+		timer: ReturnType<typeof setTimeout>;
+	} | null>(null);
 
 	// --- Query adapter -----------------------------------------------------------
 	// Stable source: resolves from props when possible, otherwise asks the host
@@ -528,9 +542,21 @@ const TransactionLog: React.FC<{ transactions: TransactionsResult | null; onPage
 					if (current && current.page === wanted) {
 						return Promise.resolve({ rows: current.transactions, total: current.total });
 					}
-					// Ask the host to fetch; park the promise until the prop arrives.
-					return new Promise<DataPage<LedgerTransaction>>((resolve) => {
-						pendingRef.current = { page: wanted, resolve };
+					// Ask the host to fetch; park the promise until the prop arrives, with
+					// a watchdog so a failed/never-arriving fetch rejects instead of
+					// spinning forever.
+					return new Promise<DataPage<LedgerTransaction>>((resolve, reject) => {
+						// Supersede any earlier parked request (only the newest matters).
+						if (pendingRef.current) clearTimeout(pendingRef.current.timer);
+						const timer = setTimeout(() => {
+							// Still parked on THIS page after the timeout: give up so the
+							// table clears its loading row (it keeps the previous rows).
+							if (pendingRef.current && pendingRef.current.page === wanted) {
+								pendingRef.current = null;
+								reject(new Error(`Transaction page ${wanted} fetch timed out`));
+							}
+						}, PAGE_FETCH_TIMEOUT_MS);
+						pendingRef.current = { page: wanted, resolve, reject, timer };
 						onPageRef.current(wanted);
 					});
 				},
@@ -541,18 +567,38 @@ const TransactionLog: React.FC<{ transactions: TransactionsResult | null; onPage
 	);
 
 	// --- Prop-arrival effect ------------------------------------------------------
-	// When a new TransactionsResult lands: settle the parked table request if it
-	// matches, otherwise nudge the table to silently re-run its current query
-	// (host-initiated refreshes).
+	// When a new TransactionsResult lands, settle a parked request or handle a
+	// host-initiated refresh — WITHOUT the retry loop the old `else` branch caused
+	// (a clamped out-of-range page never matched, so refresh() re-requested it
+	// forever).
 	useEffect(() => {
 		const pending = pendingRef.current;
-		if (pending && transactions && transactions.page === pending.page) {
-			pendingRef.current = null;
-			pending.resolve({ rows: transactions.transactions, total: transactions.total });
-		} else {
+		if (pending) {
+			// A request is parked. Settle it as soon as the host delivers the wanted
+			// page OR clamps to a lower one (an out-of-range page it can't serve);
+			// either way stop, and let DataTable's page-clamp effect snap its index
+			// back into range. Ignore a stray higher-page update (leave it parked;
+			// the watchdog covers a genuinely missing page).
+			if (transactions && transactions.page <= pending.page) {
+				clearTimeout(pending.timer);
+				pendingRef.current = null;
+				pending.resolve({ rows: transactions.transactions, total: transactions.total });
+			}
+		} else if (transactions) {
+			// No parked request: a host-initiated refresh. Nudge the table to re-run
+			// its current query (it resolves synchronously from the new props).
 			source.refresh();
 		}
 	}, [transactions, source]);
+
+	// --- Unmount cleanup ---------------------------------------------------------
+	// Clear any parked watchdog so it can't fire after the component is gone.
+	useEffect(
+		() => () => {
+			if (pendingRef.current) clearTimeout(pendingRef.current.timer);
+		},
+		[]
+	);
 
 	// --- Columns -------------------------------------------------------------------
 	// Cell renderings keep the existing badge / mono / muted treatments.

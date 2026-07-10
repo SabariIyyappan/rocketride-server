@@ -65,6 +65,13 @@ export interface IDataTableProps<Row> {
 	pageSizes?: number[];
 	/** Renders a trailing Actions column of ghost small Buttons for a row. */
 	actions?: (row: Row) => ReactNode;
+	/**
+	 * Stable React key for a row. Supply this whenever a cell holds its own state
+	 * (an open menu, an inline editor): without it rows fall back to their array
+	 * index, so after a sort / search / page change React reconciles cell state
+	 * against whatever row now sits at that index. Default: the row's array index.
+	 */
+	rowKey?: (row: Row) => string | number;
 	/** EmptyState content shown when the query returns no rows. */
 	emptyState?: { icon?: ReactNode; title: string; description?: string; action?: ReactNode };
 	/** Fired with the row when a body row is clicked. */
@@ -241,6 +248,7 @@ export function DataTable<Row>({
 	countLabel,
 	pageSizes = DEFAULT_PAGE_SIZES,
 	actions,
+	rowKey,
 	emptyState,
 	onRowClick,
 }: IDataTableProps<Row>): React.ReactElement {
@@ -334,6 +342,19 @@ export function DataTable<Row>({
 		// On change, re-run the current query without the loading row or resets.
 		return source.subscribe(() => runQuery(queryRef.current, false));
 	}, [source, runQuery]);
+
+	// --- Clamp the page when a settled result set shrank below it -------------
+	useEffect(() => {
+		// A silent refresh (subscribe / live update) or a caller swapping `source`
+		// re-runs the query at the CURRENT page. If the row total dropped so that
+		// this page now starts past the end, `slice()` returns no rows while
+		// total > 0 (so EmptyState never shows) — and when total <= pageSize the
+		// footer hides too, leaving no pager to escape with. Snap back to the last
+		// valid page once a query has settled; the query effect then re-fetches it.
+		if (loading) return;
+		const lastPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+		if (page > lastPage) setPage(lastPage);
+	}, [loading, total, pageSize, page]);
 
 	// --- Sort toggle handler -------------------------------------------------
 	/**
@@ -429,7 +450,24 @@ export function DataTable<Row>({
 										<th
 											key={col.key}
 											style={styles.headerCell(align, canSort, col.width)}
+											// A sortable header keeps its implicit columnheader role, exposes the
+											// current sort to assistive tech via aria-sort, and is keyboard-operable
+											// (focusable + Enter / Space toggles it).
+											tabIndex={canSort ? 0 : undefined}
+											aria-sort={
+												canSort ? (isSorted ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined
+											}
 											onClick={canSort ? () => handleSort(col.key) : undefined}
+											onKeyDown={
+												canSort
+													? (e) => {
+															if (e.key === 'Enter' || e.key === ' ') {
+																e.preventDefault();
+																handleSort(col.key);
+															}
+													  }
+													: undefined
+											}
 										>
 											{col.label}
 											{/* Direction glyph only on the active sort column. */}
@@ -452,7 +490,7 @@ export function DataTable<Row>({
 							) : (
 								rows.map((row, idx) => (
 									<tr
-										key={idx}
+										key={rowKey ? rowKey(row) : idx}
 										style={styles.bodyRow(Boolean(onRowClick))}
 										onClick={onRowClick ? () => onRowClick(row) : undefined}
 									>
@@ -535,22 +573,56 @@ function Pager({ page, totalPages, onPage }: IPagerProps): React.ReactElement {
 	// Whether the neighbouring pages exist for Prev / Next affordances.
 	const hasPrev = page > 0;
 	const hasNext = page < totalPages - 1;
+
+	/** Enter / Space activate a pager control, matching native button semantics. */
+	const keyActivate = (e: React.KeyboardEvent, go: () => void): void => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			go();
+		}
+	};
+
 	return (
 		<>
 			{/* Prev — disabled on the first page. */}
-			<span style={styles.pgBtn(false, !hasPrev)} onClick={hasPrev ? () => onPage(page - 1) : undefined}>
+			<span
+				role="button"
+				aria-label="Previous page"
+				aria-disabled={!hasPrev || undefined}
+				tabIndex={hasPrev ? 0 : -1}
+				style={styles.pgBtn(false, !hasPrev)}
+				onClick={hasPrev ? () => onPage(page - 1) : undefined}
+				onKeyDown={hasPrev ? (e) => keyActivate(e, () => onPage(page - 1)) : undefined}
+			>
 				Prev
 			</span>
-			{/* Current page number, highlighted. */}
-			<span style={styles.pgBtn(true, false)}>{page + 1}</span>
+			{/* Current page number, highlighted (non-interactive marker). */}
+			<span style={styles.pgBtn(true, false)} aria-current="page">
+				{page + 1}
+			</span>
 			{/* Next page number, when one exists. */}
 			{hasNext && (
-				<span style={styles.pgBtn(false, false)} onClick={() => onPage(page + 1)}>
+				<span
+					role="button"
+					aria-label={`Page ${page + 2}`}
+					tabIndex={0}
+					style={styles.pgBtn(false, false)}
+					onClick={() => onPage(page + 1)}
+					onKeyDown={(e) => keyActivate(e, () => onPage(page + 1))}
+				>
 					{page + 2}
 				</span>
 			)}
 			{/* Next — disabled on the last page. */}
-			<span style={styles.pgBtn(false, !hasNext)} onClick={hasNext ? () => onPage(page + 1) : undefined}>
+			<span
+				role="button"
+				aria-label="Next page"
+				aria-disabled={!hasNext || undefined}
+				tabIndex={hasNext ? 0 : -1}
+				style={styles.pgBtn(false, !hasNext)}
+				onClick={hasNext ? () => onPage(page + 1) : undefined}
+				onKeyDown={hasNext ? (e) => keyActivate(e, () => onPage(page + 1)) : undefined}
+			>
 				Next
 			</span>
 		</>

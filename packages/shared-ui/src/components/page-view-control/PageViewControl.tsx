@@ -94,12 +94,26 @@ const styles = {
  */
 export function PageViewControl({ menu, activeId, onSelect, trailing }: IPageViewControlProps): React.ReactElement {
 	return (
-		<div style={styles.strip}>
+		<div style={styles.strip} role="tablist">
 			{menu.entries.map((entry) => {
 				// The active tab carries the brand underline + primary text colour.
 				const isActive = entry.id === activeId;
 				return (
-					<div key={entry.id} style={styles.tab(isActive)} onClick={() => onSelect(entry.id)}>
+					<div
+						key={entry.id}
+						role="tab"
+						aria-selected={isActive}
+						tabIndex={0}
+						style={styles.tab(isActive)}
+						onClick={() => onSelect(entry.id)}
+						onKeyDown={(e) => {
+							// Enter / Space activate the tab, matching native button semantics.
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								onSelect(entry.id);
+							}
+						}}
+					>
 						{entry.label}
 						{/* Count badge when the entry declares a count. */}
 						{entry.count != null && <ViewMenuBadge count={entry.count} severity={entry.severity} />}

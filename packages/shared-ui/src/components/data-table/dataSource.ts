@@ -20,6 +20,18 @@
  * Both adapters expose a `refresh()` method and a `subscribe` hook so live
  * sources (polling, DAP push events) can make the table silently re-run its
  * current query without losing page / sort / filter state.
+ *
+ * STABILITY REQUIREMENT: pass {@link DataTable} a STABLE `source` reference.
+ * DataTable keys its query / subscribe effects off `source` identity, so a
+ * source built inline in JSX (`source={createArrayDataSource(rows)}`) is a new
+ * object every render and re-subscribes on each one. Memoize it, and feed live
+ * data through the array adapter's getter form rather than by rebuilding it:
+ *
+ *     const source = useMemo(() => createArrayDataSource(() => rowsRef.current), []);
+ *     // ...then call source.refresh() when the underlying rows change.
+ *
+ * For a fixed array whose identity is already stable,
+ * `useMemo(() => createArrayDataSource(rows), [rows])` is fine.
  */
 
 // =============================================================================
@@ -36,7 +48,13 @@ export interface DataQuery {
 	sortDir?: 'asc' | 'desc';
 	/** Free-text filter from the toolbar search box. */
 	search?: string;
-	/** Column-scoped filters (reserved; pass through untouched). */
+	/**
+	 * Column-scoped filters. RESERVED — DataTable does not yet populate this and
+	 * has no UI for it; the array adapter ignores it. It exists so a
+	 * {@link createQueryDataSource} fetcher can forward caller-supplied filters
+	 * verbatim to its API without a contract change when per-column filtering
+	 * lands. Do not rely on the table setting it.
+	 */
 	filters?: Record<string, string | number | boolean>;
 }
 

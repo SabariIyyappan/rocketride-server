@@ -105,8 +105,12 @@ export const ApiKeysPanel: React.FC<ApiKeysPanelProps> = ({ keys, onCreateKey, o
 				id: k.id,
 				name: k.name,
 				status: keyStatus(k),
-				// Session keys carry no team scope; explicit team name, or all teams.
-				team: k.isSession ? '' : k.teamName ?? 'All Teams',
+				// Team scope keys off teamId (the source of truth), not teamName:
+				//  - session keys carry no team scope -> '';
+				//  - teamId null -> genuinely org-wide -> 'All Teams';
+				//  - teamId set but name unresolved -> 'Unknown team' (NOT 'All Teams',
+				//    which would wrongly imply org-wide access).
+				team: k.isSession ? '' : k.teamId == null ? 'All Teams' : k.teamName ?? 'Unknown team',
 				lastUsedAt: k.lastUsedAt,
 				expiresAt: k.expiresAt,
 			})),

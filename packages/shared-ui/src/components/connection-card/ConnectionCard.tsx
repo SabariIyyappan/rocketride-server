@@ -15,7 +15,7 @@
  * are the stock pencil / trash icons ({@link BxEditAlt} / {@link BxTrash}).
  */
 
-import React, { CSSProperties, MouseEvent, ReactNode, useState } from 'react';
+import React, { CSSProperties, KeyboardEvent, MouseEvent, ReactNode, useState } from 'react';
 import { StatusBadge, StatusVariant } from '../status-badge/StatusBadge';
 import { BxEditAlt, BxTrash } from '../BoxIcon';
 
@@ -169,10 +169,32 @@ export function ConnectionCard({
 		action?.();
 	};
 
+	// Keyboard twin of runAction: Enter / Space fire the action (and never the card).
+	const runActionKey = (e: KeyboardEvent, action?: () => void): void => {
+		if (e.key !== 'Enter' && e.key !== ' ') return;
+		e.preventDefault();
+		e.stopPropagation();
+		action?.();
+	};
+
 	return (
 		<div
 			style={styles.card(connected, onClick != null)}
+			// The whole card is a select target only when onClick is set; then it is
+			// focusable and Enter / Space activate it, like a button.
+			role={onClick ? 'button' : undefined}
+			tabIndex={onClick ? 0 : undefined}
 			onClick={onClick}
+			onKeyDown={
+				onClick
+					? (e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								onClick();
+							}
+					  }
+					: undefined
+			}
 			onMouseEnter={() => setHovered(true)}
 			onMouseLeave={() => setHovered(false)}
 		>
@@ -180,12 +202,26 @@ export function ConnectionCard({
 			{(onEdit || onDelete) && (
 				<div style={styles.actions(hovered)}>
 					{onEdit && (
-						<span role="button" aria-label="Edit" style={styles.actionButton} onClick={(e) => runAction(e, onEdit)}>
+						<span
+							role="button"
+							aria-label="Edit"
+							tabIndex={0}
+							style={styles.actionButton}
+							onClick={(e) => runAction(e, onEdit)}
+							onKeyDown={(e) => runActionKey(e, onEdit)}
+						>
 							<BxEditAlt size={15} />
 						</span>
 					)}
 					{onDelete && (
-						<span role="button" aria-label="Delete" style={styles.actionButton} onClick={(e) => runAction(e, onDelete)}>
+						<span
+							role="button"
+							aria-label="Delete"
+							tabIndex={0}
+							style={styles.actionButton}
+							onClick={(e) => runAction(e, onDelete)}
+							onKeyDown={(e) => runActionKey(e, onDelete)}
+						>
 							<BxTrash size={15} />
 						</span>
 					)}
@@ -211,7 +247,20 @@ export function ConnectionCard({
  */
 export function ConnectionCardAdd({ label, onClick }: IConnectionCardAddProps): React.ReactElement {
 	return (
-		<div role="button" style={styles.add} onClick={onClick}>
+		<div
+			role="button"
+			aria-label={label}
+			tabIndex={0}
+			style={styles.add}
+			onClick={onClick}
+			onKeyDown={(e) => {
+				// Enter / Space activate the add tile, matching native button semantics.
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					onClick();
+				}
+			}}
+		>
 			<div style={styles.addPlus}>+</div>
 			<div style={styles.addLabel}>{label}</div>
 		</div>

@@ -468,8 +468,11 @@ function regenerateBarrels(maxN) {
 		'',
 	].join('\n');
 
-	// latest.ts re-exports the newest version's full surface.
-	fs.writeFileSync(LATEST_TS, `${MIT_HEADER}\n${generatedNote}export * from './versions/v${maxN}';\n`);
+	// latest.ts re-exports the newest version's full surface. `export type *`
+	// (not `export *`) keeps this a pure type re-export: shell-api is a types-only
+	// package and its versions exist only as `.d.ts`, so a value re-export would
+	// emit a runtime `import './versions/vN'` (module-not-found) if ever bundled.
+	fs.writeFileSync(LATEST_TS, `${MIT_HEADER}\n${generatedNote}export type * from './versions/v${maxN}';\n`);
 
 	// index.ts maps every version number to its snapshot type and tracks latest.
 	const versions = [];
@@ -496,7 +499,9 @@ function regenerateBarrels(maxN) {
 		' */',
 		`export type ShellApiLatest = ShellApiVersions[${maxN}];`,
 		'',
-		"export * from './latest';",
+		// Type-only re-export: everything in shell-api is types, so this must never
+		// emit a runtime import (see latest.ts above).
+		"export type * from './latest';",
 		'',
 	].join('\n');
 	fs.writeFileSync(INDEX_TS, index);

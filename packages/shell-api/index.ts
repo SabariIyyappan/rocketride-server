@@ -46,4 +46,4 @@ export interface ShellApiVersions {
  */
 export type ShellApiLatest = ShellApiVersions[2];
 
-export * from './latest';
+export type * from './latest';

@@ -41,7 +41,10 @@ export function formatBytes(bytes: number): string {
  */
 export function formatDate(iso: string): string {
 	const d = new Date(iso);
-	return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+	// toLocaleString (not toLocaleDateString): the date-only variant is permitted
+	// to ignore the hour/minute options, so some runtimes would drop the time this
+	// function promises. toLocaleString honors both date and time fields.
+	return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 /**

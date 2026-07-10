@@ -238,6 +238,15 @@ const shellContractModule = {
 			}),
 		},
 		{
+			name: 'shell:regen-run',
+			action: () => ({
+				run: async (ctx, task) => {
+					const script = path.join(APP_ROOT, 'scripts', 'freeze-shell-api.js');
+					await execCommand('node', [script, '--regen'], { task, cwd: APP_ROOT });
+				},
+			}),
+		},
+		{
 			// Freeze the shell-api contract: bundle src/api.ts into the next
 			// packages/shell-api/versions/vN and regenerate the conformance file.
 			name: 'shell:freeze',
@@ -254,6 +263,18 @@ const shellContractModule = {
 			action: () => ({
 				description: 'Check the shell-api contract is current (no write)',
 				steps: ['client-typescript:build', 'shell:check-run'],
+			}),
+		},
+		{
+			// Integrity check: regenerate the barrels + per-version conformance
+			// floors from the immutable versions/*.d.ts WITHOUT freezing a new
+			// version. CI runs this and then `git diff --exit-code` on the generated
+			// files — a nonzero diff means a floor was hand-edited/dropped to launder
+			// a removed export past the tsc floors. Nothing is written otherwise.
+			name: 'shell:regen',
+			action: () => ({
+				description: 'Regenerate shell-api barrels + floors from frozen versions (no new version)',
+				steps: ['client-typescript:build', 'shell:regen-run'],
 			}),
 		},
 	],
