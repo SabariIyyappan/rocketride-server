@@ -3,6 +3,7 @@ import sys
 import os
 from typing import Dict, Any
 from rocketlib import getServiceDefinition, IJson, warning
+from ai.common.env_resolve import resolve_env_placeholders
 
 
 class Config:
@@ -201,6 +202,14 @@ class Config:
 
             # Merge defaultConfig into userConfig
             config = merge(userConfig, defaultConfig)
+
+        # Resolve any ${ROCKETRIDE_*} placeholders (e.g. an apikey field set
+        # via the env-var autocomplete) that reached this layer still
+        # unresolved, so callers never send a literal placeholder to a
+        # provider SDK. Backstop for callers (e.g. the engine's live
+        # validateConfig probe) that don't pre-resolve the pipeline.
+        rocketrideEnv = {k: v for k, v in os.environ.items() if k.startswith('ROCKETRIDE_')}
+        config = resolve_env_placeholders(config, rocketrideEnv)
 
         # Output the computed configuration
         return config
