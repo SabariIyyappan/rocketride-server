@@ -45,7 +45,16 @@ def _load_config():
     class _IJson:
         @staticmethod
         def toDict(x):
-            return dict(x) if isinstance(x, dict) else x
+            # Mirrors rocketlib.IJson.toDict: recursive, and a no-op on values
+            # that are already native. getNodeConfig runs this immediately
+            # before resolve_env_placeholders (which round-trips through
+            # json.dumps), so a shallow stub here would not exercise the same
+            # normalization the engine relies on.
+            if isinstance(x, dict):
+                return {k: _IJson.toDict(v) for k, v in x.items()}
+            if isinstance(x, list):
+                return [_IJson.toDict(v) for v in x]
+            return x
 
     rl.IJson = _IJson
     rl.warning = lambda *a, **k: None
@@ -76,8 +85,14 @@ class TestApiKeyPlaceholderResolution:
             assert cfg['apikey'] == 'sk-ant-real-key'
 
     def test_missing_placeholder_left_as_is(self):
-        cfg = Config.getNodeConfig('llm_anthropic', {'apikey': '${ROCKETRIDE_MISSING_KEY}'})
-        assert cfg['apikey'] == '${ROCKETRIDE_MISSING_KEY}'
+        # Clear the variable rather than merely not setting it: the assertion is
+        # that an *unset* var keeps its placeholder, so a runner that happens to
+        # export ROCKETRIDE_MISSING_KEY would otherwise turn this green test red
+        # (or, worse, mask a regression) depending on ambient environment.
+        with patch.dict(os.environ):
+            os.environ.pop('ROCKETRIDE_MISSING_KEY', None)
+            cfg = Config.getNodeConfig('llm_anthropic', {'apikey': '${ROCKETRIDE_MISSING_KEY}'})
+            assert cfg['apikey'] == '${ROCKETRIDE_MISSING_KEY}'
 
     def test_disallowed_var_redacted_not_leaked(self):
         with patch.dict(os.environ, {'AWS_SECRET_ACCESS_KEY': 'super-secret'}):
