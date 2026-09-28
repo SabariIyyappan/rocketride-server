@@ -204,7 +204,7 @@
 				"model": "minimax-01",
 				"modelSource": "openrouter",
 				"modelTotalTokens": 1000192, // openrouter
-				"modelOutputTokens": 1000192, // openrouter
+				"modelOutputTokens": 900172, // openrouter
 				"apikey": ""
 			},
 			"minimax-m1": {
